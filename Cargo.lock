@@ -762,9 +762,9 @@ checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
 
 [[package]]
 name = "crypto-bigint"
-version = "0.5.3"
+version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "740fe28e594155f10cfc383984cbefd529d7396050557148f79cb0f621204124"
+checksum = "28f85c3514d2a6e64160359b45a3918c3b4178bcbf4ae5d03ab2d02e521c479a"
 dependencies = [
  "generic-array",
  "rand_core 0.6.4",
@@ -3059,9 +3059,9 @@ dependencies = [
 
 [[package]]
 name = "proptest"
-version = "1.3.1"
+version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c003ac8c77cb07bb74f5f198bce836a689bcd5a42574612bf14d17bfd08c20e"
+checksum = "31b476131c3c86cb68032fdc5cb6d5a1045e3e42d96b69fa599fd77701e1f5bf"
 dependencies = [
  "bitflags 2.4.1",
  "lazy_static",
@@ -3069,7 +3069,7 @@ dependencies = [
  "rand 0.8.5",
  "rand_chacha",
  "rand_xorshift",
- "regex-syntax 0.7.5",
+ "regex-syntax 0.8.2",
  "unarray",
 ]
 
@@ -3933,6 +3933,7 @@ dependencies = [
  "const_env",
  "halo2_proofs",
  "num-bigint 0.4.4",
+ "rand 0.8.5",
  "serde",
  "serde_json",
  "summa-backend",
@@ -3942,7 +3943,7 @@ dependencies = [
 [[package]]
 name = "summa-backend"
 version = "0.1.0"
-source = "git+https://github.com/summa-dev/summa-solvency?branch=v1-for-summa-aggregation#b5ef9f2876b0612c4552863c2b236bd21584b537"
+source = "git+https://github.com/summa-dev/summa-solvency?branch=v1-improvements-and-consolidation#8ab0b07587ced37d341266a73c187bb22e03560e"
 dependencies = [
  "base64 0.13.1",
  "bincode",
@@ -3962,7 +3963,7 @@ dependencies = [
 [[package]]
 name = "summa-solvency"
 version = "0.1.0"
-source = "git+https://github.com/summa-dev/summa-solvency?branch=v1-for-summa-aggregation#b5ef9f2876b0612c4552863c2b236bd21584b537"
+source = "git+https://github.com/summa-dev/summa-solvency?branch=v1-improvements-and-consolidation#8ab0b07587ced37d341266a73c187bb22e03560e"
 dependencies = [
  "ark-std",
  "csv",
