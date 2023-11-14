@@ -2,9 +2,9 @@ use axum::{extract::Json, http::StatusCode, response::IntoResponse, routing::pos
 use const_env::from_env;
 use num_bigint::BigUint;
 use std::net::SocketAddr;
-use summa_backend::merkle_sum_tree::{Entry, MerkleSumTree, Node, Tree};
 
 use serde::{Deserialize, Serialize};
+use summa_backend::merkle_sum_tree::{Entry, MerkleSumTree, Node, Tree};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JsonNode {
@@ -69,10 +69,17 @@ async fn create_mst(
         })
         .collect::<Vec<Entry<N_ASSETS>>>();
 
+    let entries_length = entries.len();
+    let starting_time = std::time::Instant::now();
     // Create `MerkleSumTree<N_ASSETS, N_BYTES>` from `parsed_entries`
     let tree = MerkleSumTree::<N_ASSETS, N_BYTES>::from_entries(entries, false).unwrap();
+    println!(
+        "Time to create tree({} entries): {}ms",
+        entries_length,
+        starting_time.elapsed().as_millis()
+    );
 
-    // Convert `MerkleSumTree<N_ASSETS, N_BYTES>` to `JsonMerkleSumTree`
+    // Convert `MerkleSumTree<N_ASSETS, N_BYTES>` to `JsonMerkleSumTree`0x0000000000000000000000000000000000000000000000000000000000087f3e
     let json_tree = JsonMerkleSumTree {
         root: convert_node_to_json(&tree.root()),
         nodes: tree
