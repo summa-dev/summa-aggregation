@@ -525,9 +525,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.0.83"
+version = "1.0.84"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1174fb0b6ec23863f8b971027804a42614e347eafb0a95bf0b12cdae21fc4d0"
+checksum = "0f8e7c90afad890484a21653d08b6e209ae34770fb5ee298f9c699fcc1e5c856"
 dependencies = [
  "libc",
 ]
@@ -1924,9 +1924,9 @@ dependencies = [
 
 [[package]]
 name = "http"
-version = "0.2.9"
+version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd6effc99afb63425aff9b05836f029929e345a6148a14b7ecd5ab67af944482"
+checksum = "8947b1a6fad4393052c7ba1f4cd97bed3e953a95c79c92ad9b051a04611d9fbb"
 dependencies = [
  "bytes",
  "fnv",
@@ -3931,9 +3931,12 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "const_env",
+ "csv",
+ "futures",
  "halo2_proofs",
  "num-bigint 0.4.4",
  "rand 0.8.5",
+ "reqwest",
  "serde",
  "serde_json",
  "summa-backend",
@@ -3943,7 +3946,7 @@ dependencies = [
 [[package]]
 name = "summa-backend"
 version = "0.1.0"
-source = "git+https://github.com/summa-dev/summa-solvency?branch=v1-improvements-and-consolidation#8ab0b07587ced37d341266a73c187bb22e03560e"
+source = "git+https://github.com/summa-dev/summa-solvency?branch=v1-for-summa-aggregation#e26303f15efce9d4dbf60e2c99916081b87d5891"
 dependencies = [
  "base64 0.13.1",
  "bincode",
@@ -3963,7 +3966,7 @@ dependencies = [
 [[package]]
 name = "summa-solvency"
 version = "0.1.0"
-source = "git+https://github.com/summa-dev/summa-solvency?branch=v1-improvements-and-consolidation#8ab0b07587ced37d341266a73c187bb22e03560e"
+source = "git+https://github.com/summa-dev/summa-solvency?branch=v1-for-summa-aggregation#e26303f15efce9d4dbf60e2c99916081b87d5891"
 dependencies = [
  "ark-std",
  "csv",

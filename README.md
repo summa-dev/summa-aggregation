@@ -1,8 +1,28 @@
 # Summa Aggregation
 
+For demonstration, We only run `Executor` instead of `Orchestrator` what we planned to implemented in here.`
+
 ## Orchestrator
 
-WIP
+The orchestrator is not yet implemented. In a real-world scenario, the orchestrator will spawn multiple `Executors`.
+
+The Executors' roles include loading `csv` files and sending data, which is converted from csv file as json type, to the Worker, which runs the `MiniTreeGenerator` in a Docker container.
+
+## Demo
+
+The demonstration compares the performance of processing large entries with a single machine (container) against processing smaller, chunked entries with four machines (containers). To run multiple `Workers`, use:
+
+```
+$ docker-compose up -d --scale mini-tree=4
+```
+
+Note That, Each worker container is assigned 1 CPU core and 128MB RAM for comparison.
+
+And you can see the comparison result with this command:
+
+```
+cargo run --bin summa-aggregation
+```
 
 ## Mini Tree Generator
 
@@ -86,4 +106,3 @@ WIP
     "is_sorted": false
   }
   ```
-

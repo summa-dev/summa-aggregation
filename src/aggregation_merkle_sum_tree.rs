@@ -14,7 +14,7 @@ use summa_backend::merkle_sum_tree::{Entry, MerkleProof, MerkleSumTree, Node, Tr
 /// * `N_BYTES`: Range in which each node balance should lie
 #[derive(Debug, Clone)]
 pub struct AggregationMerkleSumTree<const N_ASSETS: usize, const N_BYTES: usize> {
-    root: Node<N_ASSETS>,
+    pub root: Node<N_ASSETS>,
     nodes: Vec<Vec<Node<N_ASSETS>>>,
     depth: usize,
     mini_trees: Vec<MerkleSumTree<N_ASSETS, N_BYTES>>,
@@ -178,7 +178,6 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> AggregationMerkleSumTree<N_ASS
 
 #[cfg(test)]
 mod test {
-    use num_bigint::ToBigUint;
     use summa_backend::merkle_sum_tree::{MerkleSumTree, Tree};
 
     use crate::aggregation_merkle_sum_tree::AggregationMerkleSumTree;
@@ -190,10 +189,10 @@ mod test {
     fn test_aggregation_mst() {
         // create new mini merkle sum tree
         let mini_tree_1 =
-            MerkleSumTree::<N_ASSETS, N_BYTES>::new("src/data/entry_16_1.csv").unwrap();
+            MerkleSumTree::<N_ASSETS, N_BYTES>::new("src/orchestrator/csv/entry_16_1.csv").unwrap();
 
         let mini_tree_2 =
-            MerkleSumTree::<N_ASSETS, N_BYTES>::new("src/data/entry_16_2.csv").unwrap();
+            MerkleSumTree::<N_ASSETS, N_BYTES>::new("src/orchestrator/csv/entry_16_2.csv").unwrap();
 
         let aggregation_mst = AggregationMerkleSumTree::<N_ASSETS, N_BYTES>::new(vec![
             mini_tree_1.clone(),
@@ -240,10 +239,10 @@ mod test {
         // create new mini merkle sum trees. The accumulated balance for each mini tree is in the expected range
         // note that the accumulated balance of the tree generated from entry_16_3 is just in the expected range for 1 unit
         let merkle_sum_tree_1 =
-            MerkleSumTree::<N_ASSETS, N_BYTES>::new("src/data/entry_16_1.csv").unwrap();
+            MerkleSumTree::<N_ASSETS, N_BYTES>::new("src/orchestrator/csv/entry_16_1.csv").unwrap();
 
         let merkle_sum_tree_2 =
-            MerkleSumTree::<N_ASSETS, N_BYTES>::new("src/data/entry_16_.csv").unwrap();
+            MerkleSumTree::<N_ASSETS, N_BYTES>::new("src/orchestrator/csv/entry_16_2.csv").unwrap();
 
         // When creating the aggregation merkle sum tree, the accumulated balance of the two mini trees is not in the expected range, an error is thrown
         let result = AggregationMerkleSumTree::<N_ASSETS, N_BYTES>::new(vec![

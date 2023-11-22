@@ -2,30 +2,9 @@ use axum::{extract::Json, http::StatusCode, response::IntoResponse, routing::pos
 use const_env::from_env;
 use num_bigint::BigUint;
 use std::net::SocketAddr;
+
 use summa_backend::merkle_sum_tree::{Entry, MerkleSumTree, Node, Tree};
-
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct JsonNode {
-    pub hash: String,
-    pub balances: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct JsonEntry {
-    balances: Vec<String>,
-    username: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct JsonMerkleSumTree {
-    root: JsonNode,
-    nodes: Vec<Vec<JsonNode>>,
-    depth: usize,
-    entries: Vec<JsonEntry>,
-    is_sorted: bool,
-}
+use summa_aggregation::{JsonEntry, JsonMerkleSumTree, JsonNode};
 
 #[from_env]
 const N_ASSETS: usize = 2;
@@ -38,7 +17,7 @@ async fn main() {
     let app = Router::new().route("/", post(create_mst));
 
     // Define the address to serve on
-    let addr = SocketAddr::from(([0, 0, 0, 0], 4000)); // TODO: assign ports from env variable
+    let addr = SocketAddr::from(([0, 0, 0, 0], 4000));
 
     // Start the server
     axum::Server::bind(&addr)
@@ -69,8 +48,15 @@ async fn create_mst(
         })
         .collect::<Vec<Entry<N_ASSETS>>>();
 
+    let entries_length = entries.len();
+    let starting_time = std::time::Instant::now();
     // Create `MerkleSumTree<N_ASSETS, N_BYTES>` from `parsed_entries`
     let tree = MerkleSumTree::<N_ASSETS, N_BYTES>::from_entries(entries, false).unwrap();
+    println!(
+        "Time to create tree({} entries): {}ms",
+        entries_length,
+        starting_time.elapsed().as_millis()
+    );
 
     // Convert `MerkleSumTree<N_ASSETS, N_BYTES>` to `JsonMerkleSumTree`
     let json_tree = JsonMerkleSumTree {

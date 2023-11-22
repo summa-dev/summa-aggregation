@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  mini-tree:
+    image: sifnoc/summa-aggregation:latest
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 128M
+    ports:
+      - "4000-4003:4000"
