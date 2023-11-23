@@ -3,8 +3,8 @@ use const_env::from_env;
 use num_bigint::BigUint;
 use std::net::SocketAddr;
 
-use summa_backend::merkle_sum_tree::{Entry, MerkleSumTree, Node, Tree};
 use summa_aggregation::{JsonEntry, JsonMerkleSumTree, JsonNode};
+use summa_backend::merkle_sum_tree::{Entry, MerkleSumTree, Node, Tree};
 
 #[from_env]
 const N_ASSETS: usize = 2;
@@ -75,7 +75,7 @@ async fn create_mst(
                 username: entry.username().to_string(),
             })
             .collect(),
-        is_sorted: false, // TODO: assign from request data
+        is_sorted: false, // Always false because sorted entries inside minitree is meaningless
     };
 
     Ok((StatusCode::OK, Json(json_tree)))

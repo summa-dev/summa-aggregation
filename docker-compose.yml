@@ -2,11 +2,16 @@ version: '3.8'
 
 services:
   mini-tree:
-    image: sifnoc/summa-aggregation:latest
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 128M
+    image: sifnoc/summa-aggregation:mini-tree-v0.1
     ports:
-      - "4000-4003:4000"
+      - "4000-8000:4000" # To be sure the exposed ports are not used by other services
+    deploy:
+      placement:
+        constraints:
+          - node.role == worker
+    networks:
+      - summa_aggregation_network
+
+networks:
+  summa_aggregation_network:
+    driver: overlay

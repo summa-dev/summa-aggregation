@@ -1,35 +1,132 @@
 # Summa Aggregation
 
-For demonstration, We only run `Executor` instead of `Orchestrator` what we planned to implemented in here.`
+Summa Aggregation is focused on optimizing the generation of Merkle sum trees, a task identified as the primary time-consuming process in Summa benchmarks. Our goal is to significantly reduce the time required to generate these trees by leveraging parallelization across multiple machines.
+
+The system features `AggregationMerkleSumTree`, a specialized component designed for the efficient construction of complete trees from smaller, aggregated structures known as `mini-trees`. This approach not only speeds up the tree-building process but also enhances scalability and performance in large-scale data environments.
 
 ## Orchestrator
 
-The orchestrator is not yet implemented. In a real-world scenario, the orchestrator will spawn multiple `Executors`.
+The Orchestrator component will manage the orchestration of multiple `Executors`. Its primary role will be to dynamically allocate tasks and manage the data workflow among the `Executors`.
 
-The Executors' roles include loading `csv` files and sending data, which is converted from csv file as json type, to the Worker, which runs the `MiniTreeGenerator` in a Docker container.
+## Executor and ExecutorSpawner
 
-## Demo
+The `Executor` plays a crucial role in the data processing pipeline. It is responsible for receiving parsed data entries and processing them through the `mini-tree-generator`.
+Each `Executor` operates alongside a `mini-tree-generator`, accessed via a URL spawned in a container by the `ExecutorSpawner`.
 
-The demonstration compares the performance of processing large entries with a single machine (container) against processing smaller, chunked entries with four machines (containers). To run multiple `Workers`, use:
+The `ExecutorSpawner` is a trait that initializes and manages these `Executors`. It handles the creation of `Executor` instances and manages the worker, `mini-tree-generator`, which is linked with the `Executor`.
 
-```
-$ docker-compose up -d --scale mini-tree=4
-```
+### Executor Workflow
 
-Note That, Each worker container is assigned 1 CPU core and 128MB RAM for comparison.
+- `Executors` receive data entries, parsed from CSV files.
+- They send these entries to the `mini-tree-generator` service.
+- The `mini-tree-generator` processes these entries and returns the results as tree structures.
+- `Executors` then collect and forward these results for further aggregation or processing.
 
-And you can see the comparison result with this command:
+## Orchestrating on Swarm
 
-```
-cargo run --bin summa-aggregation
-```
+Docker Swarm transforms multiple Docker hosts into a single virtual host, providing crucial capabilities for high availability and scalability in distributed systems like Summa Aggregation.
+
+For more details about Docker Swarm mode, refer to the [official documentation](https://docs.docker.com/engine/swarm/).
+
+### Preparing Docker Swarm Mode
+
+You can initialize your Docker environment in Swarm mode, which is essential for managing a cluster of Docker nodes as a single virtual system.
+
+1. **Activate Swarm Mode on the Main Machine**:
+  
+    Run the following command to initialize Swarm mode:
+
+    ```bash
+    Main $ docker swarm init
+    ```
+
+      This command will output information about the Swarm, including a join token.
+
+2. **Join Worker Nodes to the Swarm**:
+
+      Use the join token provided by the main machine to add worker nodes to the swarm. On each worker node, run like:
+
+      ```bash
+      Worker_1 $ docker swarm join --token <YOUR_JOIN_TOKEN> <MAIN_MACHINE_IP>:2377
+      ```
+
+      Replace `<YOUR_JOIN_TOKEN>` with the actual token and `<MAIN_MACHINE_IP>` with the IP address of your main machine.
+
+3. **Verify Node Status**:
+  
+      To confirm that the nodes are successfully joined to the swarm, check the node status on the main machine:
+
+      ```bash
+      Main $ docker node ls
+      ```
+
+      You should see a list of all nodes in the swarm, including their status, roles, and other details like this:
+
+      ```bash
+      ID                            HOSTNAME   STATUS    AVAILABILITY   MANAGER STATUS   ENGINE VERSION
+      kby50cicvqd5d95o9pgt4puo9 *   main       Ready     Active         Leader           20.10.12
+      2adikgxr2l1zp9oqo4kowvw7n     worker_1   Ready     Active                          20.10.12
+      dz2z2v7o06h6gazmjlspyr5c8     worker_2   Ready     Active                          20.10.12
+      ````
+
+      You are ready to scaling!
+
+### Scaling Worker
+
+To scale the service, follow these steps:
+
+1. Deploy the Stack:
+
+    First, deploy your stack using the `docker-compose.yml` file if you haven't already:
+
+    ```bash
+    Main $ docker stack deploy -c docker-compose.yml summa_aggregation
+    ```
+
+2. Scale the Service:
+
+    Use the docker service scale command to adjust the number of replicas (instances) of your mini-tree service.
+    For example, to scale up to 5 instances, run:
+
+    ```bash
+    Main $ docker service scale summa_aggregation_mini-tree=5
+    ```
+
+    Since each instance has access to all of the worker's resources, it would be appropriate to set the scale number based on the number of workers.
+
+3. Verify the Scaling:
+
+    Check that the service has been scaled properly with:
+
+    ```bash
+    Main $ docker service ls
+    ```
+
+    This command shows the number of replicas running for each service in the swarm.
+
+Scaling allows you to adjust the number of service instances to meet your processing needs, enhancing the system's capability to handle increased loads or to improve redundancy and availability.
+
+This section provides clear instructions on how to scale the `mini-tree-generator` service using Docker Compose and CLI commands.
+
+### ServiceSpawner and Orchestrator
+
+In Summa Aggregation, we have implemented two types of spawners for the `Orchestrator`: the `container spawner` and the `service spawner`. These spawners are instrumental in managing the deployment and operation of our processing units, whether they are individual containers or services within a Docker Swarm environment.
+
+- **Container Spawner**:
+  The `container spawner` operates in local Docker environments. It is primarily used for development and testing purposes, This spawner is ideal for situations where simplicity and ease of setup are key, such as during initial development phases or for running unit tests.
+
+- **Service Spawner**:
+  The `service spawner` is designed to work with Docker Swarm environments. It is suitable for production deployments, where the system needs to scale across multiple machines or nodes. This spawner leverages Docker Swarm's orchestration capabilities to manage services, ensuring that they are reliably deployed, scaled, and maintained across the swarm.
+
+While both spawners manage Docker containers, the key difference lies in their operational context. The `container spawner` handles individual containers directly, making it straightforward but less scalable. On the other hand, the `service spawner` interacts with Docker Swarm to manage groups of containers as services, offering more robust scalability and resilience, crucial for handling larger workloads or distributed systems.
 
 ## Mini Tree Generator
 
 - Build the Image
   
   To build the image, run the following command:
-  ```
+
+  ```bash
   docker build . -t summa-aggregation/mini-tree
   ```
 
@@ -37,19 +134,22 @@ cargo run --bin summa-aggregation
 
   Use the command below to start the Mini Tree Generator container:
 
-  ```
+  ```bash
   docker run -d -p 4000:4000 --name mini-tree-generator summa-aggretaion/mini-tree
   ```
 
 - Test with a Script
 
   To test, execute the provided script that send two `Entry` data to server:
-  ```
+
+  ```bash
   bash ./scripts/test_sending_entry.sh
   ```
 
-  Upon successful execution, you will receive a response similar to the following 
-  (JSON output is prettified for clarity):
+  Upon successful execution, you will receive a response similar to the following
+  <details>
+  <summary>Response Json!</summary>
+
   ```Json
   {
     "root": {
@@ -106,3 +206,7 @@ cargo run --bin summa-aggregation
     "is_sorted": false
   }
   ```
+
+  this JSON output is prettified for clarity
+
+</details>

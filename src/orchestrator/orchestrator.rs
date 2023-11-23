@@ -6,16 +6,14 @@ use crate::aggregation_merkle_sum_tree::AggregationMerkleSumTree;
 use crate::executor::ExecutorSpawner;
 
 pub struct Orchestrator<const N_ASSETS: usize, const N_BYTES: usize> {
-    // executors: Vec<Box<Executor>>, // TODO: Should it be thread safe
     executor_spawner: Box<dyn ExecutorSpawner>,
     entry_csvs: Vec<String>,
 }
 
 impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES> {
-    fn new(spawner: Box<dyn ExecutorSpawner>, entry_csvs: Vec<String>) -> Self {
+    fn new(executor_spawner: Box<dyn ExecutorSpawner>, entry_csvs: Vec<String>) -> Self {
         Self {
-            // executors: spawner.spawn_executor(number_executor),
-            executor_spawner: spawner,
+            executor_spawner,
             entry_csvs,
         }
     }
@@ -25,7 +23,7 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
     // * `executor_index` - The index of the executor.
     // * `total_executors` - The total number of executor.
     //
-    // A tuple representing the start and end indices of the tasks assigned to the executor 
+    // A tuple representing the start and end indices of the tasks assigned to the executor
     fn calculate_task_range(
         &self,
         executor_index: usize,
@@ -42,6 +40,18 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
         (start, min(end, total_tasks))
     }
 
+    /// Processes a list of CSV files concurrently using executors and aggregates the results.
+    ///
+    /// * `number_executor` - The number of executors to use.
+    ///
+    /// Data flow
+    ///
+    /// 1. Splits the list of CSV files into segments based on the number of available executors.
+    /// 2. A distribution thread loads each CSV file, parses it into `entries`, and sends these to `entries_tx`.
+    /// 3. Each executor receives `entries` from `entries_rx`, requests tasks to Worker, and sends results back through `tree_tx`.
+    /// 4. The processed data from all executors, collected from `tree_rx`, is aggregated into an `AggregationMerkleSumTree`.
+    /// 6. After processing, executors are terminated to release resources.
+    ///
     async fn create_aggregation_mst(
         self,
         number_executor: usize,
@@ -53,6 +63,8 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
         let entries_per_executor = self.entry_csvs.len() / number_executor;
 
         // Declare channels for internal communication
+        // One of the channels receives parsed data from entry parser to distribute tasks to executor
+        // while the other channel is used the executors that send a result of the tasks.
         let mut executors = Vec::new();
         let mut result_collectors = Vec::new();
 
@@ -60,10 +72,17 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
         for i in 0..actual_number_of_workers {
             let (entries_tx, mut entries_rx) = mpsc::channel(32);
             let (tree_tx, tree_rx) = mpsc::channel(32);
-            let executor = self.executor_spawner.spawn_executor();
+            let executor = self.executor_spawner.spawn_executor().await;
             result_collectors.push((i, tree_rx));
 
-            // Spawn executors that process entries
+            // 2. Executor
+            //
+            // Spawn executors that process entries with Worker.
+            //
+            // - Receives 'entries' from [entries_rx] channel.
+            // - Processes 'entries' to build a tree (done by worker).
+            // - Sends the resulting 'tree' back via [tree_tx] channel.
+            //
             executors.push(tokio::spawn(async move {
                 while let Some(task) = entries_rx.recv().await {
                     let processed_task = executor
@@ -76,13 +95,20 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
                 }
             }));
 
-            // Distribute path of entry csv files to executors
+            // 1. Distributing Tasks
+            //
+            // Spawn a distribution thread that distributes entries to executors
+            //
+            // - Loads CSV file from [csv_file_path].
+            // - Parses CSV file into 'entries'.
+            // - Sends 'entries' to executors via [entries_tx] channel.
+            //
             let (start, end) = self.calculate_task_range(i, number_executor);
             let entry_csvs_slice = self.entry_csvs[start..end].to_vec(); // Clone only the necessary slice
 
             tokio::spawn(async move {
-                for task in entry_csvs_slice.iter() {
-                    let entries = entry_parser::<_, N_ASSETS, N_BYTES>(task).unwrap();
+                for file_path in entry_csvs_slice.iter() {
+                    let entries = entry_parser::<_, N_ASSETS, N_BYTES>(file_path).unwrap();
                     if entries_tx.send(entries).await.is_err() {
                         break;
                     }
@@ -90,7 +116,14 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
             });
         }
 
-        // Collect results from executors
+        // 3. Collectoing Results
+        //
+        // Collect `tree` results from executors
+        //
+        //  - Receives processed 'tree' from [tree_rx] channel.
+        //  - Collects all 'tree' results into 'worker_results'.
+        //  - Aggregates 'worker_results' into 'aggregated_tree_results'.
+        //
         let mut all_tree_responses = Vec::new();
         for (index, mut result_rx) in result_collectors {
             let executor_results = tokio::spawn(async move {
@@ -118,60 +151,11 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
             }
         }
 
-        // TODO: make sure the number of flattened data is correct
+        // Terminate executors
+        self.executor_spawner.terminate_executors().await;
+
         let all_merkle_sum_tree = aggregated_tree_results.into_iter().flatten().collect();
 
         AggregationMerkleSumTree::new(all_merkle_sum_tree)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use std::error::Error;
-    use std::sync::atomic::{AtomicUsize, Ordering};
-
-    use super::Orchestrator;
-    use crate::executor::{Executor, ExecutorSpawner};
-
-    #[tokio::test]
-    async fn test_predefiend_simple_spawner() -> Result<(), Box<dyn Error>> {
-        // This is temporary until we have a better way to test this
-        struct Spawner {
-            port_counter: AtomicUsize
-        }
-
-        impl Spawner {
-            pub fn new(start_port: usize) -> Self {
-                Spawner {
-                    port_counter: AtomicUsize::new(start_port),
-                }
-            }
-        }
-
-        impl ExecutorSpawner for Spawner {
-            fn spawn_executor(&self) -> Executor {
-                let port = self.port_counter.fetch_add(1, Ordering::SeqCst);
-                Executor::new(format!("http://localhost:{}", port))
-            }
-
-            fn terminate_executor(&self, executor: Executor) {
-                drop(executor);
-            }
-        }
-
-        let spawner = Spawner::new(4000);
-
-        let orchestrator = Orchestrator::<2, 14>::new(
-            Box::new(spawner),
-            vec![
-                "./src/orchestrator/csv/entry_16.csv".to_string(),
-                "./src/orchestrator/csv/entry_16.csv".to_string(),
-            ],
-        );
-        let aggregation_merkle_sum_tree = orchestrator.create_aggregation_mst(2).await?;
-
-        assert_eq!(16, aggregation_merkle_sum_tree.mini_tree(0).entries.len());
-        assert_eq!(16, aggregation_merkle_sum_tree.mini_tree(1).entries.len());
-        Ok(())
     }
 }
