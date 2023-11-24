@@ -166,13 +166,13 @@ mod test {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     use super::Orchestrator;
-    use crate::executor::{Executor, ExecutorSpawner};
+    use crate::executor::{Executor, ContainerSpawner};
 
     #[tokio::test]
     async fn test_orchestrator() -> Result<(), Box<dyn Error>> {
         let spawner = ContainerSpawner::new(
             "summa-aggregation".to_string(),
-            "mini_tree_generator".to_string(),
+            "orchestrator_test".to_string(),
         );
 
         let orchestrator = Orchestrator::<2, 14>::new(

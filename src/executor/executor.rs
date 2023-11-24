@@ -112,13 +112,15 @@ mod test {
     async fn test_executor() -> Result<(), Box<dyn Error>> {
         let spawner = ContainerSpawner::new(
             "summa-aggregation".to_string(),
-            "mini_tree_generator".to_string(),
+            "excutor_test".to_string(),
         );
 
         let executor = spawner.spawn_executor().await;
 
         let entries = entry_parser::<_, 2, 14>("./src/orchestrator/csv/entry_16.csv").unwrap();
         let merkle_tree = executor.generate_tree::<2, 14>(entries).await?;
+
+        spawner.terminate_executors().await;
 
         assert_eq!(
             format!("{:?}", merkle_tree.root.hash),
@@ -131,7 +133,7 @@ mod test {
     async fn test_executor_block() -> Result<(), Box<dyn Error>> {
         let spawner = ContainerSpawner::new(
             "summa-aggregation".to_string(),
-            "mini_tree_generator".to_string(),
+            "executor_block_test".to_string(),
         );
 
         let executor = spawner.spawn_executor().await;
@@ -144,6 +146,8 @@ mod test {
         let merkle_tree_2 = executor.generate_tree::<2, 14>(entries_2);
 
         let all_tree = future::join_all([merkle_tree_1, merkle_tree_2]).await;
+
+        spawner.terminate_executors().await;
 
         assert_eq!(all_tree.len(), 2);
 

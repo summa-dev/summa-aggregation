@@ -120,14 +120,22 @@ In Summa Aggregation, we have implemented two types of spawners for the `Orchest
 
 While both spawners manage Docker containers, the key difference lies in their operational context. The `container spawner` handles individual containers directly, making it straightforward but less scalable. On the other hand, the `service spawner` interacts with Docker Swarm to manage groups of containers as services, offering more robust scalability and resilience, crucial for handling larger workloads or distributed systems.
 
-## Test
+## Testing
 
-Before start to test, you have to build `mini-tree-generator` image as name of "summa-aggregation".
+Before starting the tests, you need to build the `mini-tree-generator` image and name it "summa-aggregation".
 
-You can build image with this command:
+Build the image with the following command:
 
 ```bash
 $ docker build . -t summa-aggregation
+```
+
+Ensure that the `summa-aggregation:latest` image exists in your local registry.
+
+Then, you can run the tests using this command:
+
+```bash
+$ cargo test
 ```
 
 ## Mini Tree Generator
