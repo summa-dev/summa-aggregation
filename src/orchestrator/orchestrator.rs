@@ -159,3 +159,33 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
         AggregationMerkleSumTree::new(all_merkle_sum_tree)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use std::error::Error;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    use super::Orchestrator;
+    use crate::executor::{Executor, ExecutorSpawner};
+
+    #[tokio::test]
+    async fn test_orchestrator() -> Result<(), Box<dyn Error>> {
+        let spawner = ContainerSpawner::new(
+            "summa-aggregation".to_string(),
+            "mini_tree_generator".to_string(),
+        );
+
+        let orchestrator = Orchestrator::<2, 14>::new(
+            Box::new(spawner),
+            vec![
+                "./src/orchestrator/csv/entry_16.csv".to_string(),
+                "./src/orchestrator/csv/entry_16.csv".to_string(),
+            ],
+        );
+        let aggregation_merkle_sum_tree = orchestrator.create_aggregation_mst(2).await?;
+
+        assert_eq!(16, aggregation_merkle_sum_tree.mini_tree(0).entries.len());
+        assert_eq!(16, aggregation_merkle_sum_tree.mini_tree(1).entries.len());
+        Ok(())
+    }
+}

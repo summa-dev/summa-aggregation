@@ -100,14 +100,23 @@ impl Executor {
 #[cfg(test)]
 mod test {
     use futures::future;
-    use std::error::Error;
+    use std::{error::Error, sync::atomic::AtomicUsize};
 
+    use bollard::Docker;
     use super::Executor;
     use crate::orchestrator::entry_parser;
+    use crate::executor::ContainerSpawner;
+    use crate::executor::spawner::ExecutorSpawner;
 
     #[tokio::test]
     async fn test_executor() -> Result<(), Box<dyn Error>> {
-        let executor = Executor::new("http://localhost:4000".to_string(), None);
+        let spawner = ContainerSpawner::new(
+            "summa-aggregation".to_string(),
+            "mini_tree_generator".to_string(),
+        );
+
+        let executor = spawner.spawn_executor().await;
+
         let entries = entry_parser::<_, 2, 14>("./src/orchestrator/csv/entry_16.csv").unwrap();
         let merkle_tree = executor.generate_tree::<2, 14>(entries).await?;
 
@@ -120,7 +129,12 @@ mod test {
 
     #[tokio::test]
     async fn test_executor_block() -> Result<(), Box<dyn Error>> {
-        let executor = Executor::new("http://localhost:4000".to_string(), None);
+        let spawner = ContainerSpawner::new(
+            "summa-aggregation".to_string(),
+            "mini_tree_generator".to_string(),
+        );
+
+        let executor = spawner.spawn_executor().await;
 
         // Parse two csv files
         let entries_1 = entry_parser::<_, 2, 14>("./src/data/entry_2_11_1.csv").unwrap();
