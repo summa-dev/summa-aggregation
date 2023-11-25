@@ -4067,6 +4067,7 @@ dependencies = [
  "serde_json",
  "summa-backend",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]

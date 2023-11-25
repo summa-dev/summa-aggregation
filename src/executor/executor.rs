@@ -51,16 +51,20 @@ impl Executor {
     pub async fn generate_tree<const N_ASSETS: usize, const N_BYTES: usize>(
         &self,
         json_entries: Vec<JsonEntry>,
-    ) -> Result<MerkleSumTree<N_ASSETS, N_BYTES>, Box<dyn Error>> {
+    ) -> Result<MerkleSumTree<N_ASSETS, N_BYTES>, Box<dyn Error + Send>> {
         // Parse the response body into a MerkleSumTree
         let json_tree = self
             .client
             .post(&self.url)
             .json(&json_entries)
             .send()
-            .await?
+            .await
+            .map_err(|err| Box::new(err) as Box<dyn Error + Send>)
+            .unwrap()
             .json::<JsonMerkleSumTree>()
-            .await?;
+            .await
+            .map_err(|err| Box::new(err) as Box<dyn Error + Send>)
+            .unwrap();
 
         let entries = json_entries
             .iter()
@@ -100,25 +104,22 @@ impl Executor {
 #[cfg(test)]
 mod test {
     use futures::future;
-    use std::{error::Error, sync::atomic::AtomicUsize};
+    use std::error::Error;
 
-    use bollard::Docker;
-    use super::Executor;
-    use crate::orchestrator::entry_parser;
-    use crate::executor::ContainerSpawner;
     use crate::executor::spawner::ExecutorSpawner;
+    use crate::executor::ContainerSpawner;
+    use crate::orchestrator::entry_parser;
+    use bollard::Docker;
 
     #[tokio::test]
     async fn test_executor() -> Result<(), Box<dyn Error>> {
-        let spawner = ContainerSpawner::new(
-            "summa-aggregation".to_string(),
-            "excutor_test".to_string(),
-        );
+        let spawner =
+            ContainerSpawner::new("summa-aggregation".to_string(), "excutor_test".to_string());
 
         let executor = spawner.spawn_executor().await;
 
         let entries = entry_parser::<_, 2, 14>("./src/orchestrator/csv/entry_16.csv").unwrap();
-        let merkle_tree = executor.generate_tree::<2, 14>(entries).await?;
+        let merkle_tree = executor.generate_tree::<2, 14>(entries).await.unwrap();
 
         spawner.terminate_executors().await;
 

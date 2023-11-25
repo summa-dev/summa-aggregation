@@ -13,15 +13,23 @@ struct CSVEntry {
 /// Parses a CSV file stored at path into a vector of Entries
 pub fn entry_parser<P: AsRef<Path>, const N_ASSETS: usize, const N_BYTES: usize>(
     path: P,
-) -> Result<Vec<JsonEntry>, Box<dyn Error>> {
+) -> Result<Vec<JsonEntry>, Box<dyn Error + Send>> {
     let mut json_entries = Vec::<JsonEntry>::new();
-    let file = File::open(path)?;
+    // let file = File::open(path)?;
+    let file = match File::open(path) {
+        Ok(f) => f,
+        Err(e) => return Err(Box::new(e) as Box<dyn Error + Send>),
+    };
+
     let mut rdr = csv::ReaderBuilder::new()
         .delimiter(b';') // The fields are separated by a semicolon
         .from_reader(file);
 
     for result in rdr.deserialize() {
-        let record: CSVEntry = result?;
+        let record: CSVEntry = match result {
+            Ok(r) => r,
+            Err(e) => return Err(Box::new(e) as Box<dyn Error + Send>),
+        };
 
         let entry = JsonEntry {
             username: record.username,

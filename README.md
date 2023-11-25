@@ -127,7 +127,7 @@ Before starting the tests, you need to build the `mini-tree-generator` image and
 Build the image with the following command:
 
 ```bash
-$ docker build . -t summa-aggregation
+docker build . -t summa-aggregation
 ```
 
 Ensure that the `summa-aggregation:latest` image exists in your local registry.
@@ -135,7 +135,7 @@ Ensure that the `summa-aggregation:latest` image exists in your local registry.
 Then, you can run the tests using this command:
 
 ```bash
-$ cargo test
+cargo test
 ```
 
 ## Mini Tree Generator

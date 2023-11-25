@@ -1,5 +1,7 @@
-use std::cmp::min;
+use futures::future::join_all;
+use std::{cmp::min, error::Error};
 use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 
 use super::entry_csv_parser::entry_parser;
 use crate::aggregation_merkle_sum_tree::AggregationMerkleSumTree;
@@ -42,7 +44,7 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
 
     /// Processes a list of CSV files concurrently using executors and aggregates the results.
     ///
-    /// * `number_executor` - The number of executors to use.
+    /// * `executor_count` - The number of executors to use.
     ///
     /// Data flow
     ///
@@ -54,45 +56,71 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
     ///
     async fn create_aggregation_mst(
         self,
-        number_executor: usize,
-    ) -> Result<AggregationMerkleSumTree<N_ASSETS, N_BYTES>, Box<dyn std::error::Error>>
+        executor_count: usize,
+    ) -> Result<AggregationMerkleSumTree<N_ASSETS, N_BYTES>, Box<dyn Error>>
     where
         [usize; N_ASSETS + 1]: Sized,
         [usize; 2 * (1 + N_ASSETS)]: Sized,
     {
-        let entries_per_executor = self.entry_csvs.len() / number_executor;
+        let entries_per_executor = self.entry_csvs.len() / executor_count;
 
-        // Declare channels for internal communication
-        // One of the channels receives parsed data from entry parser to distribute tasks to executor
-        // while the other channel is used the executors that send a result of the tasks.
         let mut executors = Vec::new();
         let mut result_collectors = Vec::new();
 
-        let actual_number_of_workers = min(number_executor, self.entry_csvs.len());
+        let channel_size = std::env::var("CHANNEL_SIZE")
+            .unwrap_or_default()
+            .parse::<usize>()
+            .unwrap_or(32);
+
+        let cancel_token = CancellationToken::new();
+        let actual_number_of_workers = min(executor_count, self.entry_csvs.len());
         for i in 0..actual_number_of_workers {
-            let (entries_tx, mut entries_rx) = mpsc::channel(32);
-            let (tree_tx, tree_rx) = mpsc::channel(32);
+            // Declare channels for communication
+            //
+            // There are three channels are used inthis method.
+            //
+            // - A `entries_tx` receives parsed data from the entry parser to distribute tasks to executors.
+            // - A `tree_tx` channel is used by the executors to send the results of the tasks.
+            // - A `stop` channel is used to send a stop signal to all executors in case of an error,
+            //   allowing for a coordinated shutdown or cancellation of tasks.
+            //
+            let (entries_tx, mut entries_rx) = mpsc::channel(channel_size);
+            let (tree_tx, tree_rx) = mpsc::channel(channel_size);
+
             let executor = self.executor_spawner.spawn_executor().await;
             result_collectors.push((i, tree_rx));
 
-            // 2. Executor
-            //
-            // Spawn executors that process entries with Worker.
-            //
-            // - Receives 'entries' from [entries_rx] channel.
-            // - Processes 'entries' to build a tree (done by worker).
-            // - Sends the resulting 'tree' back via [tree_tx] channel.
-            //
+            let cloned_cancel_token = cancel_token.clone();
             executors.push(tokio::spawn(async move {
-                while let Some(task) = entries_rx.recv().await {
-                    let processed_task = executor
-                        .generate_tree::<N_ASSETS, N_BYTES>(task)
-                        .await
-                        .unwrap();
-                    if tree_tx.send(processed_task).await.is_err() {
-                        break;
-                    }
-                }
+                        loop {
+                            tokio::select! {
+                                entries_data = entries_rx.recv() => {
+                                    // When the distribution thread is finished, the channel will be closed.
+                                    let entries = match entries_data {
+                                        Some(entries) => entries,
+                                        None => break,
+                                    };
+                    
+                                    let processed_task = match executor.generate_tree::<N_ASSETS, N_BYTES>(entries).await {
+                                        Ok(entries) => entries,
+                                        Err(e) => {
+                                            eprintln!("Executor_{:?}: error while processing entries {:?}", i, e);
+                                            cloned_cancel_token.cancel();
+                                            break;
+                                        }
+                                    };
+                                    if tree_tx.send(processed_task).await.is_err() {
+                                        eprintln!("Executor_{:?}: Error while sending tree result", i);
+                                        cloned_cancel_token.cancelled().await;
+                                        break;
+                                    }
+                                },
+                                _ = cloned_cancel_token.cancelled() => {
+                                    eprintln!("Executor_{:?}: cancel signal received, terminating.", i);
+                                    break;
+                                },
+                            }
+                        }
             }));
 
             // 1. Distributing Tasks
@@ -103,32 +131,53 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
             // - Parses CSV file into 'entries'.
             // - Sends 'entries' to executors via [entries_tx] channel.
             //
-            let (start, end) = self.calculate_task_range(i, number_executor);
+            let (start, end) = self.calculate_task_range(i, executor_count);
             let entry_csvs_slice = self.entry_csvs[start..end].to_vec(); // Clone only the necessary slice
 
+            // let stop_tx_clone = stop_tx.clone();
+            let cloned_cancel_token = cancel_token.clone();
             tokio::spawn(async move {
                 for file_path in entry_csvs_slice.iter() {
-                    let entries = entry_parser::<_, N_ASSETS, N_BYTES>(file_path).unwrap();
-                    if entries_tx.send(entries).await.is_err() {
-                        break;
+                    let entries = match entry_parser::<_, N_ASSETS, N_BYTES>(file_path) {
+                        Ok(entries) => entries,
+                        Err(e) => {
+                            eprintln!("Executor_{:?}: Error while processing file {:?}: {:?}", i, file_path, e);
+                            // let _ = stop_tx_clone.send(()).unwrap();
+                            cloned_cancel_token.cancel();
+                            break;
+                        }
+                    };
+
+                    tokio::select! {
+                        _ = cloned_cancel_token.cancelled() => {
+                            eprintln!("Executor_{:?}: cancel signal received, terminating distributor.", i);
+                            break;
+                        },
+                        send_entries = entries_tx.send(entries) => {
+                            if let Err(e) = send_entries {
+                                eprintln!("Executor_{:?}: Error while sending entries: {:?}", i, e);
+                                break;
+                            }
+                        }
                     }
                 }
+                drop(entries_tx);
             });
         }
 
-        // 3. Collectoing Results
+        // 3. Collecting Results
         //
         // Collect `tree` results from executors
         //
         //  - Receives processed 'tree' from [tree_rx] channel.
-        //  - Collects all 'tree' results into 'worker_results'.
-        //  - Aggregates 'worker_results' into 'aggregated_tree_results'.
+        //  - Collects all 'tree' results into 'all_tree_results'.
+        //  - Aggregates 'all_tree_results' into 'ordered_tree_results'.
         //
         let mut all_tree_responses = Vec::new();
-        for (index, mut result_rx) in result_collectors {
+        for (index, mut tree_rx) in result_collectors {
             let executor_results = tokio::spawn(async move {
                 let mut trees = Vec::new();
-                while let Some(result) = result_rx.recv().await {
+                while let Some(result) = tree_rx.recv().await {
                     trees.push(result);
                 }
                 (index, trees)
@@ -136,25 +185,22 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
             all_tree_responses.push(executor_results);
         }
 
-        // Wait for all workers to finish
-        for executor in executors {
-            let _ = executor.await;
-        }
+        let all_tree_results = join_all(all_tree_responses).await;
 
         // Aggregate results from all workers in order
-        let mut aggregated_tree_results = vec![None; self.entry_csvs.len()];
-        for result in all_tree_responses {
-            let (index, worker_results) = result.await.unwrap();
+        let mut ordered_tree_results = vec![None; self.entry_csvs.len()];
+        for result in all_tree_results {
+            let (index, worker_results) = result.unwrap();
             let start = index * entries_per_executor;
             for (i, res) in worker_results.iter().enumerate() {
-                aggregated_tree_results[start + i] = Some(res.clone());
+                ordered_tree_results[start + i] = Some(res.clone());
             }
         }
 
         // Terminate executors
         self.executor_spawner.terminate_executors().await;
 
-        let all_merkle_sum_tree = aggregated_tree_results.into_iter().flatten().collect();
+        let all_merkle_sum_tree = ordered_tree_results.into_iter().flatten().collect();
 
         AggregationMerkleSumTree::new(all_merkle_sum_tree)
     }
@@ -163,13 +209,13 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
 #[cfg(test)]
 mod test {
     use std::error::Error;
-    use std::sync::atomic::{AtomicUsize, Ordering};
 
     use super::Orchestrator;
-    use crate::executor::{Executor, ContainerSpawner};
+    use summa_backend::merkle_sum_tree::Tree;
+    use crate::executor::{ContainerSpawner, Executor};
 
     #[tokio::test]
-    async fn test_orchestrator() -> Result<(), Box<dyn Error>> {
+    async fn test_normal_operation() {
         let spawner = ContainerSpawner::new(
             "summa-aggregation".to_string(),
             "orchestrator_test".to_string(),
@@ -182,10 +228,45 @@ mod test {
                 "./src/orchestrator/csv/entry_16.csv".to_string(),
             ],
         );
-        let aggregation_merkle_sum_tree = orchestrator.create_aggregation_mst(2).await?;
-
+        let aggregation_merkle_sum_tree = orchestrator.create_aggregation_mst(2).await.unwrap();
         assert_eq!(16, aggregation_merkle_sum_tree.mini_tree(0).entries.len());
         assert_eq!(16, aggregation_merkle_sum_tree.mini_tree(1).entries.len());
-        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_single_worker() {
+        let spawner = ContainerSpawner::new(
+            "summa-aggregation".to_string(),
+            "orchestrator_single_worker_test".to_string(),
+        );
+
+        let orchestrator = Orchestrator::<2, 14>::new(
+            Box::new(spawner),
+            vec![
+                "./src/orchestrator/csv/entry_16.csv".to_string(),
+                "./src/orchestrator/csv/entry_16.csv".to_string(),
+            ],
+        );
+        let aggregation_merkle_sum_tree = orchestrator.create_aggregation_mst(1).await.unwrap();
+        assert_eq!(16, aggregation_merkle_sum_tree.mini_tree(0).entries.len());
+        assert_eq!(16, aggregation_merkle_sum_tree.mini_tree(1).entries.len());
+    }
+
+    #[tokio::test]
+    async fn test_none_exist_csv() {
+        let spawner = ContainerSpawner::new(
+            "summa-aggregation".to_string(),
+            "orchestrator_none_exist_test".to_string(),
+        );
+
+        let orchestrator = Orchestrator::<2, 14>::new(
+            Box::new(spawner),
+            vec![
+                "./src/orchestrator/csv/entry_16.csv".to_string(),
+                "./src/orchestrator/csv/no_exist.csv".to_string(),
+            ],
+        );
+        let one_mini_tree_result = orchestrator.create_aggregation_mst(2).await.unwrap();
+        assert_eq!(&0, one_mini_tree_result.depth());
     }
 }

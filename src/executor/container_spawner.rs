@@ -1,7 +1,5 @@
 use bollard::{
-    container::{
-        Config, CreateContainerOptions, RemoveContainerOptions, StartContainerOptions,
-    },
+    container::{Config, CreateContainerOptions, RemoveContainerOptions, StartContainerOptions},
     service::ContainerInspectResponse,
     Docker,
 };
