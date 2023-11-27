@@ -110,7 +110,7 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
                                     };
                                     if tree_tx.send(processed_task).await.is_err() {
                                         eprintln!("Executor_{:?}: Error while sending tree result", i);
-                                        cloned_cancel_token.cancelled().await;
+                                        cloned_cancel_token.cancel();
                                         break;
                                     }
                                 },
@@ -156,6 +156,7 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
                         send_entries = entries_tx.send(entries) => {
                             if let Err(e) = send_entries {
                                 eprintln!("Executor_{:?}: Error while sending entries: {:?}", i, e);
+                                cloned_cancel_token.cancel();
                                 break;
                             }
                         }
