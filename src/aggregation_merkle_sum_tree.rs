@@ -103,6 +103,10 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> AggregationMerkleSumTree<N_ASS
         [usize; N_ASSETS + 1]: Sized,
         [usize; 2 * (1 + N_ASSETS)]: Sized,
     {
+        if mini_trees.is_empty() {
+            return Err("Empty mini tree inputs".into());
+        }
+
         // assert that all mini trees have the same depth
         let depth = mini_trees[0].depth();
         assert!(mini_trees.iter().all(|x| x.depth() == depth));

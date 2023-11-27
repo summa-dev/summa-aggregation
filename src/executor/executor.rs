@@ -52,19 +52,18 @@ impl Executor {
         &self,
         json_entries: Vec<JsonEntry>,
     ) -> Result<MerkleSumTree<N_ASSETS, N_BYTES>, Box<dyn Error + Send>> {
-        // Parse the response body into a MerkleSumTree
-        let json_tree = self
+        let response = self
             .client
             .post(&self.url)
             .json(&json_entries)
             .send()
             .await
-            .map_err(|err| Box::new(err) as Box<dyn Error + Send>)
-            .unwrap()
+            .map_err(|err| Box::new(err) as Box<dyn Error + Send>)?;
+
+        let json_tree = response
             .json::<JsonMerkleSumTree>()
             .await
-            .map_err(|err| Box::new(err) as Box<dyn Error + Send>)
-            .unwrap();
+            .map_err(|err| Box::new(err) as Box<dyn Error + Send>)?;
 
         let entries = json_entries
             .iter()
@@ -109,7 +108,6 @@ mod test {
     use crate::executor::spawner::ExecutorSpawner;
     use crate::executor::ContainerSpawner;
     use crate::orchestrator::entry_parser;
-    use bollard::Docker;
 
     #[tokio::test]
     async fn test_executor() -> Result<(), Box<dyn Error>> {

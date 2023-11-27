@@ -100,7 +100,6 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
                                         Some(entries) => entries,
                                         None => break,
                                     };
-                    
                                     let processed_task = match executor.generate_tree::<N_ASSETS, N_BYTES>(entries).await {
                                         Ok(entries) => entries,
                                         Err(e) => {
@@ -134,15 +133,16 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
             let (start, end) = self.calculate_task_range(i, executor_count);
             let entry_csvs_slice = self.entry_csvs[start..end].to_vec(); // Clone only the necessary slice
 
-            // let stop_tx_clone = stop_tx.clone();
             let cloned_cancel_token = cancel_token.clone();
             tokio::spawn(async move {
                 for file_path in entry_csvs_slice.iter() {
                     let entries = match entry_parser::<_, N_ASSETS, N_BYTES>(file_path) {
                         Ok(entries) => entries,
                         Err(e) => {
-                            eprintln!("Executor_{:?}: Error while processing file {:?}: {:?}", i, file_path, e);
-                            // let _ = stop_tx_clone.send(()).unwrap();
+                            eprintln!(
+                                "Executor_{:?}: Error while processing file {:?}: {:?}",
+                                i, file_path, e
+                            );
                             cloned_cancel_token.cancel();
                             break;
                         }
@@ -208,14 +208,12 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
 
 #[cfg(test)]
 mod test {
-    use std::error::Error;
-
     use super::Orchestrator;
+    use crate::executor::{ContainerSpawner, MockSpawner};
     use summa_backend::merkle_sum_tree::Tree;
-    use crate::executor::{ContainerSpawner, Executor};
 
     #[tokio::test]
-    async fn test_normal_operation() {
+    async fn test_with_containers() {
         let spawner = ContainerSpawner::new(
             "summa-aggregation".to_string(),
             "orchestrator_test".to_string(),
@@ -234,11 +232,8 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_single_worker() {
-        let spawner = ContainerSpawner::new(
-            "summa-aggregation".to_string(),
-            "orchestrator_single_worker_test".to_string(),
-        );
+    async fn test_single_mock_worker() {
+        let spawner = MockSpawner::new(None);
 
         let orchestrator = Orchestrator::<2, 14>::new(
             Box::new(spawner),
@@ -254,10 +249,7 @@ mod test {
 
     #[tokio::test]
     async fn test_none_exist_csv() {
-        let spawner = ContainerSpawner::new(
-            "summa-aggregation".to_string(),
-            "orchestrator_none_exist_test".to_string(),
-        );
+        let spawner = MockSpawner::new(None);
 
         let orchestrator = Orchestrator::<2, 14>::new(
             Box::new(spawner),
@@ -268,5 +260,21 @@ mod test {
         );
         let one_mini_tree_result = orchestrator.create_aggregation_mst(2).await.unwrap();
         assert_eq!(&0, one_mini_tree_result.depth());
+    }
+
+    #[tokio::test]
+    async fn test_none_exist_worker() {
+        let non_exist_worker_url = vec!["127.0.0.1:7878".to_string()];
+        let spawner = MockSpawner::new(Some(non_exist_worker_url));
+
+        let orchestrator = Orchestrator::<2, 14>::new(
+            Box::new(spawner),
+            vec![
+                "./src/orchestrator/csv/entry_16.csv".to_string(),
+                "./src/orchestrator/csv/entry_16.csv".to_string(),
+            ],
+        );
+        let empty_mini_tree_error = orchestrator.create_aggregation_mst(2).await.unwrap_err();
+        assert_eq!("Empty mini tree inputs", empty_mini_tree_error.to_string());
     }
 }

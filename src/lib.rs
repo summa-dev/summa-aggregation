@@ -1,6 +1,7 @@
 #![feature(generic_const_exprs)]
 pub mod aggregation_merkle_sum_tree;
 pub mod executor;
+pub mod mini_tree_generator;
 pub mod orchestrator;
 
 use serde::{Deserialize, Serialize};
