@@ -1,26 +1,49 @@
 # Summa Aggregation
 
-Summa Aggregation is focused on optimizing the generation of Merkle sum trees, a task identified as the primary time-consuming process in Summa benchmarks. Our goal is to significantly reduce the time required to generate these trees by leveraging parallelization across multiple machines.
+Summa Aggregation is focused on optimizing the generation of Merkle sum tree, a task identified as the primary time-consuming process in Summa benchmarks. Our goal is to significantly reduce the time required to generate these tree by leveraging parallelization across multiple machines.
 
-The system features `AggregationMerkleSumTree`, a specialized component designed for the efficient construction of complete trees from smaller, aggregated structures known as `mini-trees`. This approach not only speeds up the tree-building process but also enhances scalability and performance in large-scale data environments.
+The system features `AggregationMerkleSumTree`, a specialized component designed for the efficient construction of complete tree from smaller, aggregated structures known as `mini-tree`. This approach not only speeds up the tree-building process but also enhances scalability and performance in large-scale data environments.
 
 ## Orchestrator
 
-The Orchestrator component will manage the orchestration of multiple `Executors`. Its primary role will be to dynamically allocate tasks and manage the data workflow among the `Executors`.
+The Orchestrator in the Summa Aggregation serves as the central management component, coordinating the data processing activities. It plays a pivotal role in coordinating the activities of `Executors` and `Workers`, improving of tasks in the generation of Merkle sum tree.
+Key functions of the `Orchestrator` include:
 
-## Executor and ExecutorSpawner
+- **Dynamic Executor Spawning**: The Orchestrator dynamically spawns `Executors` in numbers set by the user. Each `Executor` is then connected to a dedicated `Worker` for efficient task execution.
 
-The `Executor` plays a crucial role in the data processing pipeline. It is responsible for receiving parsed data entries and processing them through the `mini-tree-generator`.
-Each `Executor` operates alongside a `mini-tree-generator`, accessed via a URL spawned in a container by the `ExecutorSpawner`.
+- **Task Management and Distribution**: It oversees the overall task flow, loading tasks and distributing them to `Executors`.
 
-The `ExecutorSpawner` is a trait that initializes and manages these `Executors`. It handles the creation of `Executor` instances and manages the worker, `mini-tree-generator`, which is linked with the `Executor`.
+- **Error Management and Pipeline Control**: The Orchestrator handles basic pipeline control and responds to errors by initiating the cancellation of all tasks.
 
-### Executor Workflow
+## Executor and Worker
 
-- `Executors` receive data entries, parsed from CSV files.
-- They send these entries to the `mini-tree-generator` service.
-- The `mini-tree-generator` processes these entries and returns the results as tree structures.
-- `Executors` then collect and forward these results for further aggregation or processing.
+The `Executor` acts as a crucial intermediary between the `Orchestrator` and `Workers`, facilitating the data processing workflow. Spawned by the `Orchestrator`, each `Executor` operates in a one-to-one relationship with a `Worker`. The `Worker` is a server that can generate a merkle sum tree, internally called a `mini-tree`, by receiving entries data. The primary role of a `Worker` is to build these `mini-trees`, which are segments of the `AggregationMerkleSumTree`.
+
+Key aspects of the `Executor's` role include:
+
+- **Spawning and Connection**: `Executors` are dynamically spawned by the `Orchestrator` as part of the system's scalability. Each `Executor` is designed to connect with a `Worker` for task execution.
+
+- **Data Handling and Task Distribution**: A primary function of the `Executor` is to receive data entries, often parsed and prepared by the Orchestrator. Upon receiving these entries, the Executor is responsible for forwarding them to its connected `Worker`.
+
+- **Communication Bridge**: The `Executor` serves as a communication bridge within the data pipeline. It relays processed data, `mini-trees`, from Workers back to the Orchestrator.
+
+The `Worker` called in here, mostly point out the container that runs `mini-tree-generator` server.
+
+## ExecutorSpawner
+
+The `ExecutorSpawner` is responsible for initializing and terminating `Executors`. It manages the creation of `Executor` instances and `Workers`, with the latter serving as the `mini-tree-generator` accessible by the `Executor`.
+
+In the Summa-Aggregation, there are three types of `ExecutorSpawner`:
+
+- **MockSpawner**: Primarily used for testing, this spawner initializes `Executors` suitable for various test scenarios, including negative test cases. The Worker spawned by this spawner runs a server locally.
+
+- **LocalSpawner**: It is close to actual use cases, this spawner enables users to initialize `Executors` and `Workers` in local Docker environments.
+
+- **CloudSpawner**: Ideal for scenarios with access to cloud resources, this spawner functions same like to the `LocalSpawner`, but with `Workers` running in the cloud.
+
+While both `LocalSpawner` and `CloudSpawner` manage Docker containers, they differ in operational context. `LocalSpawner` handles individual containers directly, providing simplicity but limited scalability. In contrast, `CloudSpawner` employs Docker Swarm to manage containers as services, thereby offering enhanced scalability and resilience, crucial for larger workloads.
+
+The `ExecutorSpawner` is a trait with minimal requirements, specifically the Rust trait methods `spawn_executor` and `terminate_executor`. You can create your own spawner and use it with the Orchestrator.
 
 ## Orchestrating on Swarm
 
@@ -69,11 +92,11 @@ You can initialize your Docker environment in Swarm mode, which is essential for
       dz2z2v7o06h6gazmjlspyr5c8     worker_2   Ready     Active                          20.10.12
       ````
 
-      You are ready to scaling!
+      You are ready to spawn more workers!
 
-### Scaling Worker
+### Spawning More Workers
 
-To scale the service, follow these steps:
+In Docker Swarm mode, containers are managed as services rather than by individual names. To spawn more workers, follow these steps:
 
 1. Deploy the Stack:
 
@@ -108,19 +131,7 @@ Scaling allows you to adjust the number of service instances to meet your proces
 
 This section provides clear instructions on how to scale the `mini-tree-generator` service using Docker Compose and CLI commands.
 
-### ServiceSpawner and Orchestrator
-
-In Summa Aggregation, we have implemented two types of spawners for the `Orchestrator`: the `container spawner` and the `service spawner`. These spawners are instrumental in managing the deployment and operation of our processing units, whether they are individual containers or services within a Docker Swarm environment.
-
-- **Container Spawner**:
-  The `container spawner` operates in local Docker environments. It is primarily used for development and testing purposes, This spawner is ideal for situations where simplicity and ease of setup are key, such as during initial development phases or for running unit tests.
-
-- **Service Spawner**:
-  The `service spawner` is designed to work with Docker Swarm environments. It is suitable for production deployments, where the system needs to scale across multiple machines or nodes. This spawner leverages Docker Swarm's orchestration capabilities to manage services, ensuring that they are reliably deployed, scaled, and maintained across the swarm.
-
-While both spawners manage Docker containers, the key difference lies in their operational context. The `container spawner` handles individual containers directly, making it straightforward but less scalable. On the other hand, the `service spawner` interacts with Docker Swarm to manage groups of containers as services, offering more robust scalability and resilience, crucial for handling larger workloads or distributed systems.
-
-## Testing
+## Test
 
 Before starting the tests, you need to build the `mini-tree-generator` image and name it "summa-aggregation".
 
@@ -138,93 +149,67 @@ Then, you can run the tests using this command:
 cargo test
 ```
 
-## Mini Tree Generator
+### Test Mini Tree Generator
 
-- Build the Image
-  
-  To build the image, run the following command:
+You can manually test the `Mini Tree Generator` with running container.
 
-  ```bash
-  docker build . -t summa-aggregation/mini-tree
-  ```
-
-- Run the `Mini Tree Generator Container`
-
-  Use the command below to start the Mini Tree Generator container:
+First, Use the command below to start the Mini Tree Generator container:
 
   ```bash
   docker run -d -p 4000:4000 --name mini-tree-generator summa-aggretaion/mini-tree
   ```
 
-- Test with a Script
-
-  To test, execute the provided script that send two `Entry` data to server:
+Second, to send two entries to the `Mini Tree Generator`, use this script:
 
   ```bash
   bash ./scripts/test_sending_entry.sh
   ```
 
-  Upon successful execution, you will receive a response similar to the following
-  <details>
-  <summary>Response Json!</summary>
+Upon successful execution, you will receive a response similar to the following
+<details>
+<summary>Click View Response</summary>
 
-  ```Json
-  {
-    "root": {
-      "hash": "0x2a4a7ae82b45b3800bdcd6364409e7ba9cac3d4598c546bd48952c234b5d2fb9",
-      "balances": [
-        "0x000000000000000000000000000000000000000000000000000000000001375f",
-        "0x000000000000000000000000000000000000000000000000000000000000e9a6"
-      ]
-    },
-    "nodes": [
-      [
-        {
-          "hash": "0x0e113acd03b98f0bab0ef6f577245d5d008cbcc19ef2dab3608aa4f37f72a407",
-          "balances": [
-            "0x0000000000000000000000000000000000000000000000000000000000002e70",
-            "0x000000000000000000000000000000000000000000000000000000000000a0cb"
-          ]
-        },
-        {
-          "hash": "0x17ef9d8ee0e2c8470814651413b71009a607a020214f749687384a7b7a7eb67a",
-          "balances": [
-            "0x00000000000000000000000000000000000000000000000000000000000108ef",
-            "0x00000000000000000000000000000000000000000000000000000000000048db"
-          ]
-        }
-      ],
-      [
-        {
-          "hash": "0x2a4a7ae82b45b3800bdcd6364409e7ba9cac3d4598c546bd48952c234b5d2fb9",
-          "balances": [
-            "0x000000000000000000000000000000000000000000000000000000000001375f",
-            "0x000000000000000000000000000000000000000000000000000000000000e9a6"
-          ]
-        }
-      ]
-    ],
-    "depth": 1,
-    "entries": [
+```Json
+{
+  "root": {
+    "hash": "0x2a4a7ae82b45b3800bdcd6364409e7ba9cac3d4598c546bd48952c234b5d2fb9",
+    "balances": [
+      "0x000000000000000000000000000000000000000000000000000000000001375f",
+      "0x000000000000000000000000000000000000000000000000000000000000e9a6"
+    ]
+  },
+  "nodes": [
+    [
       {
+        "hash": "0x0e113acd03b98f0bab0ef6f577245d5d008cbcc19ef2dab3608aa4f37f72a407",
         "balances": [
-          "11888",
-          "41163"
-        ],
-        "username": "dxGaEAii"
+          "0x0000000000000000000000000000000000000000000000000000000000002e70",
+          "0x000000000000000000000000000000000000000000000000000000000000a0cb"
+        ]
       },
       {
+        "hash": "0x17ef9d8ee0e2c8470814651413b71009a607a020214f749687384a7b7a7eb67a",
         "balances": [
-          "67823",
-          "18651"
-        ],
-        "username": "MBlfbBGI"
+          "0x00000000000000000000000000000000000000000000000000000000000108ef",
+          "0x00000000000000000000000000000000000000000000000000000000000048db"
+        ]
       }
     ],
-    "is_sorted": false
-  }
-  ```
+    [
+      {
+        "hash": "0x2a4a7ae82b45b3800bdcd6364409e7ba9cac3d4598c546bd48952c234b5d2fb9",
+        "balances": [
+          "0x000000000000000000000000000000000000000000000000000000000001375f",
+          "0x000000000000000000000000000000000000000000000000000000000000e9a6"
+        ]
+      }
+    ]
+  ],
+  "depth": 1,
+  "is_sorted": false
+}
+```
 
-  this JSON output is prettified for clarity
+this JSON output is prettified for clarity
 
 </details>
