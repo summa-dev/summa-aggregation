@@ -7,17 +7,17 @@ use std::{
 
 use crate::executor::{Executor, ExecutorSpawner};
 
-// TODO: the ServiceSpawner can control services on swarm networks using docker API.
-pub struct ServiceSpawner {
+// TODO: the CouldSpawner can control services on swarm networks using docker API.
+pub struct CouldSpawner {
     docker: Docker,
     request_counter: AtomicUsize,
     starting_port: u16,
     service_name: String,
 }
 
-impl ServiceSpawner {
+impl CouldSpawner {
     pub fn new(service_name: String, starting_port: u16) -> Self {
-        ServiceSpawner {
+        CouldSpawner {
             docker: Docker::connect_with_local_defaults().unwrap(),
             request_counter: AtomicUsize::new(0),
             starting_port,
@@ -26,7 +26,7 @@ impl ServiceSpawner {
     }
 }
 
-impl ExecutorSpawner for ServiceSpawner {
+impl ExecutorSpawner for CouldSpawner {
     fn spawn_executor(&self) -> Pin<Box<dyn Future<Output = Executor> + Send>> {
         // Return a Future that resolves to Executor
         let worker_port =
@@ -52,7 +52,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_service_spawner() {
-        let spawner = ServiceSpawner {
+        let spawner = CouldSpawner {
             docker: Docker::connect_with_local_defaults().unwrap(),
             request_counter: AtomicUsize::new(0),
             starting_port: 4000,

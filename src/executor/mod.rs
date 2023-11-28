@@ -1,11 +1,11 @@
-mod container_spawner;
+mod cloud_spawner;
 mod executor;
+mod local_spawner;
 mod mock_spawner;
-mod service_spawner;
 mod spawner;
 
-pub use container_spawner::ContainerSpawner;
+pub use cloud_spawner::CouldSpawner;
 pub use executor::Executor;
+pub use local_spawner::LocalSpawner;
 pub use mock_spawner::MockSpawner;
-pub use service_spawner::ServiceSpawner;
 pub use spawner::ExecutorSpawner;

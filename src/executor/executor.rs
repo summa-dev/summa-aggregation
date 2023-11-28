@@ -106,13 +106,13 @@ mod test {
     use std::error::Error;
 
     use crate::executor::spawner::ExecutorSpawner;
-    use crate::executor::ContainerSpawner;
+    use crate::executor::LocalSpawner;
     use crate::orchestrator::entry_parser;
 
     #[tokio::test]
     async fn test_executor() -> Result<(), Box<dyn Error>> {
         let spawner =
-            ContainerSpawner::new("summa-aggregation".to_string(), "excutor_test".to_string());
+            LocalSpawner::new("summa-aggregation".to_string(), "excutor_test".to_string());
 
         let executor = spawner.spawn_executor().await;
 
@@ -130,7 +130,7 @@ mod test {
 
     #[tokio::test]
     async fn test_executor_block() -> Result<(), Box<dyn Error>> {
-        let spawner = ContainerSpawner::new(
+        let spawner = LocalSpawner::new(
             "summa-aggregation".to_string(),
             "executor_block_test".to_string(),
         );

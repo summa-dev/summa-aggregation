@@ -210,12 +210,12 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
 #[cfg(test)]
 mod test {
     use super::Orchestrator;
-    use crate::executor::{ContainerSpawner, MockSpawner};
+    use crate::executor::{LocalSpawner, MockSpawner};
     use summa_backend::merkle_sum_tree::Tree;
 
     #[tokio::test]
     async fn test_with_containers() {
-        let spawner = ContainerSpawner::new(
+        let spawner = LocalSpawner::new(
             "summa-aggregation".to_string(),
             "orchestrator_test".to_string(),
         );

@@ -15,16 +15,16 @@ use tokio::sync::oneshot;
 
 use crate::executor::{Executor, ExecutorSpawner};
 
-pub struct ContainerSpawner {
+pub struct LocalSpawner {
     docker: Docker,
     worker_counter: AtomicUsize,
     image_name: String,
     container_name: String,
 }
 
-impl ContainerSpawner {
+impl LocalSpawner {
     pub fn new(image_name: String, container_name: String) -> Self {
-        ContainerSpawner {
+        LocalSpawner {
             docker: Docker::connect_with_local_defaults().unwrap(),
             worker_counter: AtomicUsize::new(0),
             image_name,
@@ -70,7 +70,7 @@ impl ContainerSpawner {
     }
 }
 
-impl ExecutorSpawner for ContainerSpawner {
+impl ExecutorSpawner for LocalSpawner {
     fn spawn_executor(&self) -> Pin<Box<dyn Future<Output = Executor> + Send>> {
         // Using channel that onetime use, `oneshot`, to send container information
         let (tx, rx) = oneshot::channel();
@@ -82,8 +82,7 @@ impl ExecutorSpawner for ContainerSpawner {
         let id = self.worker_counter.fetch_add(1, Ordering::SeqCst);
         tokio::spawn(async move {
             if let Ok(container_info) =
-                ContainerSpawner::create_container(docker_clone, image_name, container_name, id)
-                    .await
+                LocalSpawner::create_container(docker_clone, image_name, container_name, id).await
             {
                 let _ = tx.send(container_info);
             }
@@ -132,7 +131,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_executor_spawner() {
-        let spawner = ContainerSpawner {
+        let spawner = LocalSpawner {
             docker: Docker::connect_with_local_defaults().unwrap(),
             worker_counter: AtomicUsize::new(0),
             image_name: "summa-aggregation".to_string(), // Should exist on local registry

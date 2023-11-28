@@ -149,6 +149,9 @@ Then, you can run the tests using this command:
 cargo test
 ```
 
+Note that the Worker uses port 4000 as the default for its server.
+Please ensure that this port is not already in use when you meet error.
+
 ### Test Mini Tree Generator
 
 You can manually test the `Mini Tree Generator` with running container.
