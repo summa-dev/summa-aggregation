@@ -14,7 +14,7 @@ use summa_backend::merkle_sum_tree::{Entry, MerkleProof, MerkleSumTree, Node, Tr
 /// * `N_BYTES`: Range in which each node balance should lie
 #[derive(Debug, Clone)]
 pub struct AggregationMerkleSumTree<const N_ASSETS: usize, const N_BYTES: usize> {
-    pub root: Node<N_ASSETS>,
+    root: Node<N_ASSETS>,
     nodes: Vec<Vec<Node<N_ASSETS>>>,
     depth: usize,
     mini_trees: Vec<MerkleSumTree<N_ASSETS, N_BYTES>>,
