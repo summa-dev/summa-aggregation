@@ -96,7 +96,7 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
             // Spawn executors that process entries with Worker.
             //
             // - Receives 'entries' from [entries_rx] channel.
-            // - Processes 'entries' to build a tree (done by worker).
+            // - Processes 'entries' to build a merkle sum tree (done by worker).
             // - Sends the resulting 'tree' back via [tree_tx] channel.
             //
             let executor = self.executor_spawner.spawn_executor().await;

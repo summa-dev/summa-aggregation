@@ -1,7 +1,4 @@
-use axum::{
-    routing::post,
-    Router,
-};
+use axum::{routing::post, Router};
 use std::{
     future::Future,
     net::SocketAddr,
@@ -49,8 +46,7 @@ impl ExecutorSpawner for MockSpawner {
 
         // if there is no url or already used all urls, spawn a new executor
         tokio::spawn(async move {
-            let app = Router::new()
-                .route("/", post(create_mst));
+            let app = Router::new().route("/", post(create_mst));
 
             let addr = SocketAddr::from(([0, 0, 0, 0], 4000 + id as u16));
 
@@ -58,7 +54,10 @@ impl ExecutorSpawner for MockSpawner {
             let _ = tx.send(addr.clone());
 
             // Start the server
-            axum::Server::bind(&addr).serve(app.into_make_service()).await.unwrap();
+            axum::Server::bind(&addr)
+                .serve(app.into_make_service())
+                .await
+                .unwrap();
         });
 
         // Return a Future that resolves to Executor
