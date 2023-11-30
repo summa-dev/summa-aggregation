@@ -48,16 +48,17 @@ impl ExecutorSpawner for MockSpawner {
         tokio::spawn(async move {
             let app = Router::new().route("/", post(create_mst));
 
-            let addr = SocketAddr::from(([0, 0, 0, 0], 4000 + id as u16));
+            // Bind to port 0 to let the OS choose a random port
+            let addr = SocketAddr::from(([127, 0, 0, 1], 0));
 
-            // send worker url to rx
-            let _ = tx.send(addr);
+            let server = axum::Server::bind(&addr)
+                .serve(app.into_make_service());
 
-            // Start the server
-            axum::Server::bind(&addr)
-                .serve(app.into_make_service())
-                .await
-                .unwrap();
+            // Send worker url to rx
+            let _ = tx.send(server.local_addr());
+
+            // Start server
+            server.await.unwrap();
         });
 
         // Return a Future that resolves to Executor
@@ -96,14 +97,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_with_given_url() {
-        let urls = vec!["127.0.0.1:7878".to_string()];
+        let urls = vec!["192.168.0.1:65535".to_string()];
         let spawner = MockSpawner::new(Some(urls));
 
         // Spawn 2 executors
         let executor_1 = spawner.spawn_executor().await;
         let executor_2 = spawner.spawn_executor().await;
 
-        assert_eq!(executor_1.get_url(), "http://127.0.0.1:7878");
-        assert_eq!(executor_2.get_url(), "http://0.0.0.0:4001");
+        assert_eq!(executor_1.get_url(), "http://192.168.0.1:65535");
+        assert_ne!(executor_2.get_url(), "http://192.168.0.1:65535");
     }
 }

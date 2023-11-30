@@ -55,7 +55,7 @@ mod test {
 
     #[tokio::test]
     async fn test_none_exist_worker() {
-        let non_exist_worker_url = vec!["127.0.0.1:7878".to_string()];
+        let non_exist_worker_url = vec!["127.0.0.1:40".to_string()]; // unsignable port
         let spawner = MockSpawner::new(Some(non_exist_worker_url));
 
         let orchestrator = Orchestrator::<2, 14>::new(

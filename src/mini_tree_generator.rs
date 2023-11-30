@@ -1,8 +1,8 @@
 use axum::{extract::Json, http::StatusCode, response::IntoResponse};
 use const_env::from_env;
 
-use crate::json_mst::{convert_node_to_json, JsonEntry, JsonMerkleSumTree};
-use summa_backend::merkle_sum_tree::{Entry, MerkleSumTree, Tree};
+use crate::json_mst::{JsonEntry, JsonMerkleSumTree};
+use summa_backend::merkle_sum_tree::{Entry, MerkleSumTree};
 
 #[from_env]
 const N_ASSETS: usize = 2;
