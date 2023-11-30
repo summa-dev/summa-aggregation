@@ -42,7 +42,6 @@ mod test {
     #[tokio::test]
     async fn test_none_exist_csv() {
         let spawner = MockSpawner::new(None);
-
         let orchestrator = Orchestrator::<2, 14>::new(
             Box::new(spawner),
             vec![

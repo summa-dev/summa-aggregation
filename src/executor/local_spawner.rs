@@ -103,7 +103,7 @@ impl ExecutorSpawner for LocalSpawner {
         let docker_clone = self.docker.clone();
 
         let container_name = self.container_name.clone();
-        let worker_counter = self.worker_counter.load(Ordering::SeqCst).clone();
+        let worker_counter = self.worker_counter.load(Ordering::SeqCst);
         Box::pin(async move {
             // Remove the container
             let remove_options = RemoveContainerOptions {
@@ -114,7 +114,7 @@ impl ExecutorSpawner for LocalSpawner {
             for i in 0..worker_counter {
                 let container_name = format!("{}_{}", container_name, i);
                 if let Err(e) = docker_clone
-                    .remove_container(&container_name, Some(remove_options.clone()))
+                    .remove_container(&container_name, Some(remove_options))
                     .await
                 {
                     eprintln!("Error removing container: {}", e);

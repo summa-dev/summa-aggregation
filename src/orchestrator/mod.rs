@@ -56,7 +56,7 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
     /// 2. A distribution thread loads each CSV file, parses it into `entries`, and sends these to `entries_tx`.
     /// 3. Each executor receives `entries` from `entries_rx`, requests tasks to Worker, and sends results back through `tree_tx`.
     /// 4. The processed data from all executors, collected from `tree_rx`, is aggregated into an `AggregationMerkleSumTree`.
-    /// 6. After processing, executors are terminated to release resources.
+    /// 5. After processing, executors are terminated to release resources.
     ///
     async fn create_aggregation_mst(
         self,
@@ -85,8 +85,6 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
             //
             // - A `entries_tx` receives parsed data from the entry parser to distribute tasks to executors.
             // - A `tree_tx` channel is used by the executors to send the results of the tasks.
-            // - A `stop` channel is used to send a stop signal to all executors in case of an error,
-            //   allowing for a coordinated shutdown or cancellation of tasks.
             //
             let (entries_tx, mut entries_rx) = mpsc::channel(channel_size);
             let (tree_tx, tree_rx) = mpsc::channel(channel_size);

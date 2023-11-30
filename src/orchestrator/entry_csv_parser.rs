@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use std::{error::Error, fs::File, path::Path};
 
-use super::super::JsonEntry;
+use crate::json_mst::JsonEntry;
 
 // From summa_solvency package
 #[derive(Debug, Deserialize)]
@@ -31,10 +31,10 @@ pub fn entry_parser<P: AsRef<Path>, const N_ASSETS: usize, const N_BYTES: usize>
             Err(e) => return Err(Box::new(e) as Box<dyn Error + Send>),
         };
 
-        let entry = JsonEntry {
-            username: record.username,
-            balances: record.balances.split(',').map(|b| b.to_string()).collect(),
-        };
+        let entry = JsonEntry::new(
+            record.username,
+            record.balances.split(',').map(|b| b.to_string()).collect(),
+        );
 
         json_entries.push(entry);
     }

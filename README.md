@@ -8,6 +8,8 @@ The primary objective of Summa Aggregation is to enable efficient scaling in the
 
 For further optimization in Summa Aggregation, we introduced the AggregationMerkleSumTree component. This component is designed for efficiently constructing large Merkle sum trees by utilizing smaller-sized Merkle sum tree.
 
+![diagram](/Orchestrator-diagram.png)
+
 ## Orchestrator
 
 The Orchestrator in the Summa Aggregation serves as the central management component, coordinating the data processing activities. It plays a pivotal role in coordinating the activities of Executors and Workers, improving of tasks in the generation of Merkle sum tree.
@@ -39,11 +41,13 @@ The Worker called in here, mostly point out a container that runs `mini-tree-ser
 
 ## ExecutorSpawner
 
-The `ExecutorSpawner` is responsible for initializing and terminating Executors. It manages the creation of Executor instances and Workers, with the latter serving as the `mini-tree-generator` accessible by the Executor.
+The `ExecutorSpawner` is responsible for initializing and terminating Executors. It can serve as the management point for creating `Executor` instances and Workers. The latter function as the `mini-tree-server`. It's important to note, however, that managing workers through the `ExecutorSpawner` is not mandatory.
+
+Note that managing workers through the `ExecutorSpawner` is not mandatory.
 
 In the Summa-Aggregation, there are three types of `ExecutorSpawner`:
 
-- **MockSpawner**: Primarily used for testing, this spawner initializes Executors suitable for various test scenarios, including negative test cases. The Worker spawned by this spawner runs a server locally.
+- **MockSpawner**: Primarily used for testing, this spawner initializes Executors suitable for various test scenarios, including negative test cases. The Worker spawned by this spawner runs a `mini-tree-server` locally.
 
 - **LocalSpawner**: It is close to actual use cases, this spawner enables users to initialize Executors and Workers in local Docker environments.
 
@@ -57,8 +61,6 @@ The `ExecutorSpawner` is a trait with minimal requirements, specifically the Rus
 
 The diagram illustrates a distributed approach to constructing the `AggregatedMerkleSumTree`, where an orchestrator delegates tasks to executors, which are then processed in parallel by workers.
 
-![diagram](/orchestrator-diagram.png)
-
 ## Orchestrating on Swarm
 
 Docker Swarm transforms multiple Docker hosts into a single virtual host, providing crucial capabilities for high availability and scalability.
@@ -68,6 +70,8 @@ For more details about Docker Swarm mode, refer to the [official documentation](
 ### Preparing Docker Swarm Mode
 
 You can initialize your Docker environment in Swarm mode, which is essential for managing a cluster of Docker nodes as a single virtual system.
+
+Note that setting up Swarm mode may not work well depending on the OS, as network configurations differ across operating systems.
 
 1. **Activate Swarm Mode on the Main Machine**:
   
@@ -110,9 +114,11 @@ You can initialize your Docker environment in Swarm mode, which is essential for
 
 ### Spawning More Workers
 
-This section provides clear instructions on how to scale the `mini-tree-generator` service using Docker Compose and CLI commands.
+You can spawning the or managing worker by `CloudSpanwer` without using Docker CLI command, which will explain in here. but Even well configured swarm network following previous section. It does not guarentee spawning worker as well.
 
-In Docker Swarm mode, containers are managed as services rather than by individual names. To spawn more workers, follow these steps:
+In this section, you can verify that you can create a 'mini-tree-server' on any node. Before introducing the specific instructions, it's important to understand that in Docker Swarm mode, containers are managed as services rather than by individual names.
+
+To spawn more workers, follow these steps:
 
 1. Deploy the Stack:
 
@@ -124,14 +130,17 @@ In Docker Swarm mode, containers are managed as services rather than by individu
 
 2. Scale the Service:
 
-    Use the docker service scale command to adjust the number of replicas (instances) of your mini-tree service.
-    For example, to scale up to 5 instances, run:
+    Utilize the 'scale' sub-command within the Docker 'service' command to adjust the number of replicas (workers) for your mini-tree service.
+
+    'mini-tree' refers to the name of the service, which is configured in the 'docker-compose.yml' file. Think of the number of replicas as the number of workers.
+
+    For example, to scale up to 5 workers, run:
 
     ```bash
     Main $ docker service scale summa_aggregation_mini-tree=5
     ```
 
-    Since each instance has access to all of the worker's resources, it would be appropriate to set the scale number based on the number of workers.
+    Since each worker has access to all of the node's resources, it would be appropriate to set the scale number based on the number of node.
 
 3. Verify the Scaling:
 
@@ -143,11 +152,11 @@ In Docker Swarm mode, containers are managed as services rather than by individu
 
     This command shows the number of replicas running for each service in the swarm.
 
-Scaling allows you to adjust the number of service instances to meet your processing needs, enhancing the system's capability to handle increased loads or to improve redundancy and availability.
+Scaling service allows you to adjust the number of workers more easily than spawning each worker individually.
 
 ## Test
 
-Before starting the tests, you need to build the `mini-tree-generator` image and name it "summa-aggregation".
+Before starting the tests, you need to build the `mini-tree-server` image and name it "summa-aggregation".
 
 Build the image with the following command:
 
@@ -166,17 +175,17 @@ cargo test
 Note that the Worker uses port 4000 as the default for its server.
 Please ensure that this port is not already in use when you meet error.
 
-### Test Mini Tree Generator
+### Test Mini Tree Server
 
-You can manually test the `Mini Tree Generator` with running container.
+You can manually test the `Mini Tree Server` with running container.
 
-First, Use the command below to start the Mini Tree Generator container:
+First, Use the command below to start the Mini Tree Server container:
 
   ```bash
-  docker run -d -p 4000:4000 --name mini-tree-generator summa-aggretaion/mini-tree
+  docker run -d -p 4000:4000 --name mini-tree-server summa-aggretaion/mini-tree
   ```
 
-Second, to send two entries to the `Mini Tree Generator`, use this script:
+Second, to send two entries to the `Mini Tree Server`, use this script:
 
   ```bash
   bash ./scripts/test_sending_entry.sh

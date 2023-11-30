@@ -9,7 +9,6 @@ mod test {
     #[tokio::test]
     async fn test_executor() -> Result<(), Box<dyn Error>> {
         let spawner = MockSpawner::new(None);
-
         let executor = spawner.spawn_executor().await;
 
         let entries = entry_parser::<_, 2, 14>("./src/orchestrator/csv/entry_16.csv").unwrap();

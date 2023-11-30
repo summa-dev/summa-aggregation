@@ -51,7 +51,7 @@ impl ExecutorSpawner for MockSpawner {
             let addr = SocketAddr::from(([0, 0, 0, 0], 4000 + id as u16));
 
             // send worker url to rx
-            let _ = tx.send(addr.clone());
+            let _ = tx.send(addr);
 
             // Start the server
             axum::Server::bind(&addr)
