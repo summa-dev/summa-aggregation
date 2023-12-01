@@ -1,17 +1,20 @@
 version: '3.8'
 
 services:
-  mini-tree:
+  mini_tree:
     image: sifnoc/summa-aggregation:mini-tree-v0.1
-    ports:
-      - "4000-8000:4000" # To be sure the exposed ports are not used by other services
+    ports: # This does not effect to `CloudSpawner` configuration
+      - target: 4000
+      - published: 4000
+        protocol: tcp
+        mode: host
     deploy:
       placement:
         constraints:
           - node.role == worker
     networks:
-      - summa_aggregation_network
+      - mini_tree_net
 
 networks:
-  summa_aggregation_network:
+  mini_tree_net:
     driver: overlay

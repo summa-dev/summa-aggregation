@@ -1,69 +1,134 @@
-use bollard::Docker;
-use std::{
-    future::Future,
-    pin::Pin,
-    sync::atomic::{AtomicUsize, Ordering},
+use bollard::models::{
+    EndpointSpec, NetworkAttachmentConfig, ServiceSpec, TaskSpec, TaskSpecContainerSpec,
+    TaskSpecPlacement,
 };
+use bollard::service::{EndpointPortConfig, ListServicesOptions, UpdateServiceOptions};
+use bollard::Docker;
+use docker_compose_types::Compose;
+use std::{future::Future, pin::Pin};
 
 use crate::executor::{Executor, ExecutorSpawner};
 
 // TODO: the CouldSpawner can control services on swarm networks using docker API.
-pub struct CouldSpawner {
+pub struct CloudSpawner {
     docker: Docker,
-    request_counter: AtomicUsize,
-    starting_port: u16,
+    service_id: String,
     service_name: String,
+    exposed_port: i64,
 }
 
-impl CouldSpawner {
-    pub fn new(service_name: String, starting_port: u16) -> Self {
-        CouldSpawner {
-            docker: Docker::connect_with_local_defaults().unwrap(),
-            request_counter: AtomicUsize::new(0),
-            starting_port,
-            service_name,
+impl CloudSpawner {
+    pub async fn new(
+        service_name: &str,
+        compose_path: &str,
+        exposed_port: i64,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let file_payload = std::fs::read_to_string(compose_path).unwrap();
+        let compose = match serde_yaml::from_str::<Compose>(&file_payload) {
+            Ok(c) => c,
+            Err(e) => panic!("Failed to parse docker-compose file: {}", e),
+        };
+
+        // Retrieve spec in docker-compose file
+        let service = compose
+            .services
+            .0
+            .get(service_name)
+            .unwrap()
+            .as_ref()
+            .unwrap();
+        let image_name = service.image.as_ref().unwrap();
+        let replicas = service.deploy.as_ref().unwrap().replicas.unwrap();
+        let placement = service.deploy.as_ref().unwrap().placement.as_ref().unwrap();
+
+        let docker = bollard::Docker::connect_with_local_defaults().unwrap();
+
+        // Checking service exist
+        let services = docker
+            .list_services(None::<ListServicesOptions<String>>)
+            .await?;
+
+        let mut found_exist_service = false;
+        let mut service_id = String::new();
+        services.iter().for_each(|service| {
+            if service_name == service.spec.as_ref().unwrap().name.as_ref().unwrap() {
+                found_exist_service = true;
+                service_id = service.id.as_ref().unwrap().to_string();
+            }
+        });
+
+        let service_spec = ServiceSpec {
+            name: Some(String::from(service_name)),
+            task_template: Some(TaskSpec {
+                placement: Some(TaskSpecPlacement {
+                    constraints: Some(placement.constraints.clone()),
+                    ..Default::default()
+                }),
+                container_spec: Some(TaskSpecContainerSpec {
+                    image: Some(image_name.to_string()),
+                    ..Default::default()
+                }),
+                networks: Some(vec![NetworkAttachmentConfig {
+                    target: Some("summa_mini_tree_net".to_string()),
+                    ..Default::default()
+                }]),
+                ..Default::default()
+            }),
+            endpoint_spec: Some(EndpointSpec {
+                ports: Some(vec![EndpointPortConfig {
+                    target_port: Some(4000),
+                    published_port: Some(exposed_port),
+                    ..Default::default()
+                }]),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        if found_exist_service {
+            println!(
+                "Service {:?} already exists, Will use the service",
+                service_name
+            );
+            let update_service_options = UpdateServiceOptions {
+                version: 1234, // TODO: version control
+                ..Default::default()
+            };
+            let update_response = docker
+                .update_service(service_name, service_spec, update_service_options, None)
+                .await?;
+            update_response.warnings.iter().for_each(|warning| {
+                println!("warning: {:?}", warning);
+            });
+        } else {
+            // Use service_spec with bollard to create the service
+            let service_response = docker.create_service(service_spec, None).await?;
+            service_id = service_response.id.ok_or("Failed to get service ID")?;
+            println!("Service {:?} created", service_name);
         }
+
+        Ok(CloudSpawner {
+            docker: Docker::connect_with_local_defaults().unwrap(),
+            service_id,
+            service_name: service_name.to_string(),
+            exposed_port,
+        })
     }
 }
 
-impl ExecutorSpawner for CouldSpawner {
+impl ExecutorSpawner for CloudSpawner {
     fn spawn_executor(&self) -> Pin<Box<dyn Future<Output = Executor> + Send>> {
-        // Return a Future that resolves to Executor
-        let worker_port =
-            self.starting_port + self.request_counter.fetch_add(1, Ordering::SeqCst) as u16;
-
-        Box::pin(async move {
-            let worker_url = format!("http://localhost:{}", worker_port);
-            Executor::new(worker_url, None)
-        })
+        // The traffic is routed to the service by the swarm manager.
+        // So, All executor can use the same exposed endpoint for distributing task to multiple workers.
+        let endpoint = self.exposed_port;
+        Box::pin(
+            async move { Executor::new(format!("http://localhost:{}", endpoint), None) },
+        )
     }
 
     fn terminate_executors(&self) -> Pin<Box<dyn Future<Output = ()> + Send>> {
         Box::pin(async move {
-            // Nothing to do if no executors are running
+            // Nothing to do
         })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::sync::atomic::AtomicUsize;
-
-    #[tokio::test]
-    async fn test_service_spawner() {
-        let spawner = CouldSpawner {
-            docker: Docker::connect_with_local_defaults().unwrap(),
-            request_counter: AtomicUsize::new(0),
-            starting_port: 4000,
-            service_name: "test_service".to_string(),
-        };
-
-        // Spawn 2 executors
-        let executor_1 = spawner.spawn_executor().await;
-        let executor_2 = spawner.spawn_executor().await;
-
-        assert_eq!("http://localhost:4000", executor_1.get_url());
-        assert_eq!("http://localhost:4001", executor_2.get_url());
     }
 }

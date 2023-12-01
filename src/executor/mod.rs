@@ -4,7 +4,7 @@ mod mock_spawner;
 mod spawner;
 mod test;
 
-pub use cloud_spawner::CouldSpawner;
+pub use cloud_spawner::CloudSpawner;
 pub use local_spawner::LocalSpawner;
 pub use mock_spawner::MockSpawner;
 pub use spawner::ExecutorSpawner;

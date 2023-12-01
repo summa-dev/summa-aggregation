@@ -51,8 +51,7 @@ impl ExecutorSpawner for MockSpawner {
             // Bind to port 0 to let the OS choose a random port
             let addr = SocketAddr::from(([127, 0, 0, 1], 0));
 
-            let server = axum::Server::bind(&addr)
-                .serve(app.into_make_service());
+            let server = axum::Server::bind(&addr).serve(app.into_make_service());
 
             // Send worker url to rx
             let _ = tx.send(server.local_addr());
@@ -90,7 +89,7 @@ mod tests {
         let executor_2 = spawner.spawn_executor().await;
 
         // Sleep 2 seconds for the container to be ready
-        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         assert!(!executor_1.get_url().is_empty());
         assert!(!executor_2.get_url().is_empty());
     }
@@ -104,6 +103,7 @@ mod tests {
         let executor_1 = spawner.spawn_executor().await;
         let executor_2 = spawner.spawn_executor().await;
 
+        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         assert_eq!(executor_1.get_url(), "http://192.168.0.1:65535");
         assert_ne!(executor_2.get_url(), "http://192.168.0.1:65535");
     }

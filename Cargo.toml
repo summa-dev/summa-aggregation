@@ -20,7 +20,13 @@ rand = "0.8.5"
 futures = "0.3.29"
 bollard = "0.15.0"
 tokio-util = "0.7.10"
+docker-compose-types = "0.6.1"
+serde_yaml = "0.9.27"
  
 [[bin]]
 name = "mini-tree-server"
 path = "bin/mini_tree_server.rs"
+
+[[bin]]
+name = "swarm"
+path = "bin/docker-swarm.rs"
