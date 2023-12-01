@@ -1,20 +1,20 @@
 version: '3.8'
 
+# CloudSpawner only reads from the first element of lists
 services:
   mini_tree:
     image: sifnoc/summa-aggregation:mini-tree-v0.1
-    ports: # This does not effect to `CloudSpawner` configuration
-      - target: 4000
+    ports: 
       - published: 4000
-        protocol: tcp
-        mode: host
+        target: 4000
     deploy:
+      replicas: 2
       placement:
         constraints:
           - node.role == worker
     networks:
-      - mini_tree_net
+      - mini_tree
 
 networks:
-  mini_tree_net:
+  mini_tree:
     driver: overlay

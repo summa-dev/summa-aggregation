@@ -10,7 +10,7 @@ else
 fi
 
 # The curl command with the variable PORT
-curl -X POST http://localhost:$PORT/ \
+curl -X POST http://localhost:$PORT \
      -vvv \
      -H "Content-Type: application/json" \
      -d '[

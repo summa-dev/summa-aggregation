@@ -3,8 +3,32 @@ mod test {
     use futures::future;
     use std::error::Error;
 
-    use crate::executor::{spawner::ExecutorSpawner, MockSpawner};
+    use bollard::models::TaskSpecContainerSpec;
+
+    use crate::executor::{spawner::ExecutorSpawner, utils::get_specs_from_compose, MockSpawner};
     use crate::orchestrator::entry_parser;
+
+    #[test]
+    fn test_util_get_specs_from_compose() {
+        let (network_options, service_spec) =
+            get_specs_from_compose("mini_tree", "docker-compose.yml").unwrap();
+
+        let service_name = "mini_tree";
+        assert_eq!(network_options.name, service_name);
+        assert_eq!(network_options.driver, "overlay");
+
+        assert_eq!(service_spec.name.unwrap(), service_name);
+        assert!(service_spec.mode.is_some());
+        assert!(service_spec.task_template.is_some());
+        assert!(service_spec.endpoint_spec.is_some());
+        assert_eq!(
+            service_spec.task_template.unwrap().container_spec.unwrap(),
+            TaskSpecContainerSpec {
+                image: Some("sifnoc/summa-aggregation:mini-tree-v0.1".to_string()),
+                ..Default::default()
+            }
+        );
+    }
 
     #[tokio::test]
     async fn test_executor() -> Result<(), Box<dyn Error>> {

@@ -3,6 +3,7 @@ mod local_spawner;
 mod mock_spawner;
 mod spawner;
 mod test;
+mod utils;
 
 pub use cloud_spawner::CloudSpawner;
 pub use local_spawner::LocalSpawner;

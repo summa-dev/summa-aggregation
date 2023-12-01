@@ -8,12 +8,16 @@ The primary objective of Summa Aggregation is to enable efficient scaling in the
 
 For further optimization in Summa Aggregation, we introduced the AggregationMerkleSumTree component. This component is designed for efficiently constructing large Merkle sum trees by utilizing smaller-sized Merkle sum tree.
 
+## Diagram of Parallel Merkle Sum Tree Construction
+
+The diagram illustrates a distributed approach to constructing the `AggregatedMerkleSumTree`, where an orchestrator delegates tasks to executors, which are then processed in parallel by workers. The following sections will explain the roles of the Orchestrator, Executor, Worker and ExecutorSpawner.
+
 ![diagram](/Orchestrator-diagram.png)
 
 ## Orchestrator
 
 The Orchestrator in the Summa Aggregation serves as the central management component, coordinating the data processing activities. It plays a pivotal role in coordinating the activities of Executors and Workers, improving of tasks in the generation of Merkle sum tree.
-The final result of the Orchestrator is the construction of the `AggregationMerkleSumTree`. This is achieved by aggregating the mini-trees constructed by the Workers.
+The final result of the Orchestrator is the construction of the `AggregationMerkleSumTree`. This is achieved by aggregating the mini-trees constructed by the Workers. The Worker in here refers to a container running `mini-tree-server`.
 
 Key functions of the Orchestrator include:
 
@@ -37,37 +41,31 @@ Key aspects of the Executor's role include:
 
 - **Communication Bridge**: The Executor serves as a communication bridge within the data pipeline. It relays processed data, `mini-tree`, from Workers back to the Orchestrator.
 
-The Worker called in here, mostly point out a container that runs `mini-tree-server`.
-
 ## ExecutorSpawner
 
-The `ExecutorSpawner` is responsible for initializing and terminating Executors. It can serve as the management point for creating `Executor` instances and Workers. The latter function as the `mini-tree-server`. It's important to note, however, that managing workers through the `ExecutorSpawner` is not mandatory.
+The `ExecutorSpawner` is responsible for initializing and terminating Executors. It can serve as the management point for creating `Executor` instances and Workers. The latter function as the `mini-tree-server`.
 
-Note that managing workers through the `ExecutorSpawner` is not mandatory.
-
-In the Summa-Aggregation, there are three types of `ExecutorSpawner`:
+In the Summa-Aggregation, there are three types of `ExecutorSpawner` provided:
 
 - **MockSpawner**: Primarily used for testing, this spawner initializes Executors suitable for various test scenarios, including negative test cases. The Worker spawned by this spawner runs a `mini-tree-server` locally.
 
 - **LocalSpawner**: It is close to actual use cases, this spawner enables users to initialize Executors and Workers in local Docker environments.
 
-- **CloudSpawner**: Ideal for scenarios with access to cloud resources, this spawner functions same like to the `LocalSpawner`, but with Workers running in the cloud.
+- **CloudSpawner**: Ideal for scenarios where cloud resources are accessed. This spawner functions similarly to the `LocalSpawner`, but it initializes workers on remote machines. In particular, it can be run on a Swarm network using the `docker-compose` file, which is a specific configuration for the Swarm network. Additionally, it can run using existing worker node URLs if the configuration file is not set.
 
-While both `LocalSpawner` and `CloudSpawner` manage Docker containers, they differ in operational context. `LocalSpawner` handles individual containers directly, providing simplicity but limited scalability. In contrast, `CloudSpawner` employs Docker Swarm to manage containers as services, thereby offering enhanced scalability and resilience, crucial for larger workloads.
+The Docker Swarm transforms multiple Docker hosts into a single virtual host, providing crucial capabilities for high availability and scalability. For more details about Docker Swarm mode, refer to the [official documentation](https://docs.docker.com/engine/swarm/).
 
-The `ExecutorSpawner` is a trait with minimal requirements, specifically the Rust trait methods `spawn_executor` and `terminate_executor`. You can create your own spawner and use it with the Orchestrator.
+While both `LocalSpawner` and `CloudSpawner` manage Docker containers, they differ in operational context. `LocalSpawner` handles individual containers directly, providing simplicity but limited scalability. In contrast, `CloudSpawner` may employs Docker Swarm to manage containers as services, thereby offering enhanced scalability and resilience, crucial for larger workloads.
 
-## Diagram of Parallel Merkle Sum Tree Construction
-
-The diagram illustrates a distributed approach to constructing the `AggregatedMerkleSumTree`, where an orchestrator delegates tasks to executors, which are then processed in parallel by workers.
+It's important to note, however, that managing workers through these three type of  `ExecutorSpawner`, is not mandatory. Technically, the `ExecutorSpawner` is a trait with minimal requirements for the Orchestrator, specifically the methods `spawn_executor` and `terminate_executor`. You can create your own spawner and use it with the Orchestrator.
 
 ## Orchestrating on Swarm
 
-Docker Swarm transforms multiple Docker hosts into a single virtual host, providing crucial capabilities for high availability and scalability.
-
-For more details about Docker Swarm mode, refer to the [official documentation](https://docs.docker.com/engine/swarm/).
+For Summa-Aggregation purposes, you need to prepare a distributed environment where Workers can run on remote machines (referred to as 'Nodes'). An example of this is using Swarm, as mentioned in the previous section. This section will introduce how to set up Swarm mode and test it using Docker CLI.
 
 ### Preparing Docker Swarm Mode
+
+In Summa-Aggregation, the `CloudSpawner` is designed to operate on Docker Swarm. It requires the URLs of Workers for initiation, which are the IP addresses of the Workers joining the Swarm network as per the instructions below.
 
 You can initialize your Docker environment in Swarm mode, which is essential for managing a cluster of Docker nodes as a single virtual system.
 
@@ -112,9 +110,9 @@ Note that setting up Swarm mode may not work well depending on the OS, as networ
 
       You are ready to spawn more workers!
 
-### Spawning More Workers
+### Spawning More Workers with CloudSpawner
 
-You can spawning the or managing worker by `CloudSpanwer` without using Docker CLI command, which will explain in here. but Even well configured swarm network following previous section. It does not guarentee spawning worker as well.
+You can spawning or managing worker by `CloudSpawner` without using Docker CLI command, which will explain in here. but Even well configured swarm network following previous section. It does not guarentee spawning worker as well.
 
 In this section, you can verify that you can create a 'mini-tree-server' on any node. Before introducing the specific instructions, it's important to understand that in Docker Swarm mode, containers are managed as services rather than by individual names.
 
