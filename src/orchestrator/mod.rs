@@ -17,7 +17,7 @@ pub struct Orchestrator<const N_ASSETS: usize, const N_BYTES: usize> {
 }
 
 impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES> {
-    fn new(executor_spawner: Box<dyn ExecutorSpawner>, entry_csvs: Vec<String>) -> Self {
+    pub fn new(executor_spawner: Box<dyn ExecutorSpawner>, entry_csvs: Vec<String>) -> Self {
         Self {
             executor_spawner,
             entry_csvs,
@@ -58,7 +58,7 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
     /// 4. The processed data from all executors, collected from `tree_rx`, is aggregated into an `AggregationMerkleSumTree`.
     /// 5. After processing, executors are terminated to release resources.
     ///
-    async fn create_aggregation_mst(
+    pub async fn create_aggregation_mst(
         self,
         executor_count: usize,
     ) -> Result<AggregationMerkleSumTree<N_ASSETS, N_BYTES>, Box<dyn Error>>
