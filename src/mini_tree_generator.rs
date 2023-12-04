@@ -15,7 +15,7 @@ pub async fn create_mst(
     // Convert `JsonEntry` -> `Entry<N_CURRENCIES>`
     let entries = json_entries
         .iter()
-        .map(|entry| entry.to_entry())
+        .map(|json_entry| json_entry.to_entry())
         .collect::<Vec<Entry<N_CURRENCIES>>>();
     let crypcocurrencies = vec![
         Cryptocurrency {

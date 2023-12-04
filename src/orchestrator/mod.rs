@@ -88,7 +88,7 @@ impl<const N_CURRENCIES: usize, const N_BYTES: usize> Orchestrator<N_CURRENCIES,
             let (entries_tx, mut entries_rx) = mpsc::channel(channel_size);
             let (tree_tx, tree_rx) = mpsc::channel(channel_size);
 
-            // 2. Executor
+            // Executor
             //
             // Spawn executors that process entries with Worker.
             //
@@ -131,7 +131,7 @@ impl<const N_CURRENCIES: usize, const N_BYTES: usize> Orchestrator<N_CURRENCIES,
                         }
             }));
 
-            // 1. Distributing Tasks
+            // Distributing Tasks
             //
             // Spawn a distribution thread that distributes entries to executors
             //
@@ -179,7 +179,7 @@ impl<const N_CURRENCIES: usize, const N_BYTES: usize> Orchestrator<N_CURRENCIES,
             });
         }
 
-        // 3. Collecting Results
+        // Collecting Results
         //
         // Collect `tree` results from executors
         //

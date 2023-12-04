@@ -31,7 +31,7 @@ Key functions of the Orchestrator include:
 
 ## Executor and Worker
 
-The Executor acts as a crucial intermediary between the Orchestrator and Workers, facilitating the data processing workflow. Spawned by the Orchestrator, each Executor operates in a one-to-one relationship with a Worker. The Worker is a server that can generate a merkle sum tree, internally called a mini-tree, by receiving entries data. The primary role of a Worker is to build these mini-tree, which are segments of the AggregationMerkleSumTree.
+The Executor acts as a crucial intermediary between the Orchestrator and Workers, facilitating the data processing workflow. Spawned by the Orchestrator, each Executor operates in a one-to-one relationship with a Worker. A Worker in this context refers to a container that runs the `mini-tree-server`. Its primary function is to generate a segment of the AggregationMerkleSumTree, known as a `mini-tree`, by processing entry data. These mini-trees are then aggregated by the Orchestrator to form the complete AggregationMerkleSumTree.
 
 Key aspects of the Executor's role include:
 
@@ -112,7 +112,7 @@ Note that setting up Swarm mode may not work well depending on the OS, as networ
 
 ### Spawning More Workers with CloudSpawner
 
-You can spawning or managing worker by `CloudSpawner` without using Docker CLI command, which will explain in here. but Even well configured swarm network following previous section. It does not guarentee spawning worker as well.
+You can spawning or managing worker by `CloudSpawner` without using Docker CLI command, which will explain in here. However, even with a well-configured swarm network in the previous section, workers may not be created properly in various reason.
 
 In this section, you can verify that you can create a 'mini-tree-server' on any node. Before introducing the specific instructions, it's important to understand that in Docker Swarm mode, containers are managed as services rather than by individual names.
 

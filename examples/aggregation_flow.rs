@@ -14,13 +14,15 @@ use summa_backend::{
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    // In this example, we will use local mini-tree server to generate mini-tree
-    let app = Router::new().route("/", post(create_mst));
-    let addr = SocketAddr::from(([0, 0, 0, 0], 4000));
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    // In this example, we will use local mini-tree server to generate mini-tree    
+    tokio::spawn(async move {
+        let app = Router::new().route("/", post(create_mst));
+        let addr = SocketAddr::from(([0, 0, 0, 0], 4000));
+        axum::Server::bind(&addr)
+            .serve(app.into_make_service())
+            .await
+            .unwrap();
+    });
 
     // The CloudSpawner, when used with the Orchestrator, does not rely on a `docker-compose.yml` file or a `service_name` to create Workers.
     // It solely utilizes the `worker_node_url`. Typically, in production environments, workers operate on remote nodes.
@@ -31,13 +33,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // For this demonstration, using the same URL address is acceptable. However, the number of URLs should match the number of executors.
     let worker_node_urls = vec!["127.0.0.1".to_string(), "127.0.0.1".to_string()];
     let spawner = CloudSpawner::new(None, worker_node_urls, 4000);
-    let orchestrator = Orchestrator::<2, 14>::new(
+    let orchestrator = Orchestrator::<N_CURRENCIES, N_BYTES>::new(
         Box::new(spawner),
         vec![
-            "./src/orchestrator/csv/entry_16.csv".to_string(),
-            "./src/orchestrator/csv/entry_16.csv".to_string(),
+            "./src/orchestrator/csv/entry_16_1.csv".to_string(),
+            "./src/orchestrator/csv/entry_16_2.csv".to_string(),
         ],
     );
+
     // Number of Executor should be equal to number of worker_node_urls
     let aggregation_merkle_sum_tree = orchestrator.create_aggregation_mst(2).await.unwrap();
 
