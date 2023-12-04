@@ -40,10 +40,14 @@ impl Executor {
         self.id.clone()
     }
 
-    pub async fn generate_tree<const N_ASSETS: usize, const N_BYTES: usize>(
+    pub async fn generate_tree<const N_CURRENCIES: usize, const N_BYTES: usize>(
         &self,
         json_entries: Vec<JsonEntry>,
-    ) -> Result<MerkleSumTree<N_ASSETS, N_BYTES>, Box<dyn Error + Send>> {
+    ) -> Result<MerkleSumTree<N_CURRENCIES, N_BYTES>, Box<dyn Error + Send>>
+    where
+        [usize; N_CURRENCIES + 1]: Sized,
+        [usize; N_CURRENCIES + 2]: Sized,
+    {
         let response = self
             .client
             .post(&self.url)
@@ -57,7 +61,7 @@ impl Executor {
             .await
             .map_err(|err| Box::new(err) as Box<dyn Error + Send>)?;
 
-        let tree = json_tree.to_mst();
+        let tree = json_tree.to_mst().unwrap();
 
         Ok(tree)
     }

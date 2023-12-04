@@ -25,7 +25,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // The CloudSpawner, when used with the Orchestrator, does not rely on a `docker-compose.yml` file or a `service_name` to create Workers.
     // It solely utilizes the `worker_node_url`. Typically, in production environments, workers operate on remote nodes.
     const LEVELS: usize = 2;
-    const N_ASSETS: usize = 2;
+    const N_CURRENCIES: usize = 2;
     const N_BYTES: usize = 14;
 
     // For this demonstration, using the same URL address is acceptable. However, the number of URLs should match the number of executors.
@@ -54,12 +54,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Once get the aggregation merkle sum tree, we can initialize the round.
     let timestamp = 1u64;
-    let asset_csv = "examples/assets.csv";
     let params_path = "examples/hermez-raw-11";
-    let round = Round::<LEVELS, N_ASSETS, N_BYTES>::new(
+    let round = Round::<LEVELS, N_CURRENCIES, N_BYTES>::new(
         &signer,
         Box::new(aggregation_merkle_sum_tree),
-        asset_csv,
         params_path,
         timestamp,
     )

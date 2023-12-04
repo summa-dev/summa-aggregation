@@ -1,29 +1,33 @@
 use halo2_proofs::halo2curves::bn256::Fr as Fp;
 use num_bigint::BigUint;
+use std::error::Error;
 use summa_backend::merkle_sum_tree::utils::{build_merkle_tree_from_leaves, fp_to_big_uint};
-use summa_backend::merkle_sum_tree::{Entry, MerkleProof, MerkleSumTree, Node, Tree};
+use summa_backend::merkle_sum_tree::{
+    Cryptocurrency, Entry, MerkleProof, MerkleSumTree, Node, Tree,
+};
 
 /// Aggregation Merkle Sum Tree Data Structure.
 ///
-/// Starting from a set of "mini" Merkle Sum Trees of equal depth, N_ASSETS and N_BYTES, the Aggregation Merkle Sum Tree inherits the properties of a Merkle Sum Tree and adds the following:
+/// Starting from a set of "mini" Merkle Sum Trees of equal depth, N_CURRENCIES and N_BYTES, the Aggregation Merkle Sum Tree inherits the properties of a Merkle Sum Tree and adds the following:
 /// * Each Leaf of the Aggregation Merkle Sum Tree is the root of a "mini" Merkle Sum Tree made of `hash` and `balances`
 ///
 /// # Type Parameters
 ///
-/// * `N_ASSETS`: The number of assets for each user account
+/// * `N_CURRENCIES`: The number of assets for each user account
 /// * `N_BYTES`: Range in which each node balance should lie
 #[derive(Debug, Clone)]
-pub struct AggregationMerkleSumTree<const N_ASSETS: usize, const N_BYTES: usize> {
-    root: Node<N_ASSETS>,
-    nodes: Vec<Vec<Node<N_ASSETS>>>,
+pub struct AggregationMerkleSumTree<const N_CURRENCIES: usize, const N_BYTES: usize> {
+    root: Node<N_CURRENCIES>,
+    nodes: Vec<Vec<Node<N_CURRENCIES>>>,
     depth: usize,
-    mini_trees: Vec<MerkleSumTree<N_ASSETS, N_BYTES>>,
+    cryptocurrencies: Vec<Cryptocurrency>,
+    mini_trees: Vec<MerkleSumTree<N_CURRENCIES, N_BYTES>>,
 }
 
-impl<const N_ASSETS: usize, const N_BYTES: usize> Tree<N_ASSETS, N_BYTES>
-    for AggregationMerkleSumTree<N_ASSETS, N_BYTES>
+impl<const N_CURRENCIES: usize, const N_BYTES: usize> Tree<N_CURRENCIES, N_BYTES>
+    for AggregationMerkleSumTree<N_CURRENCIES, N_BYTES>
 {
-    fn root(&self) -> &Node<N_ASSETS> {
+    fn root(&self) -> &Node<N_CURRENCIES> {
         &self.root
     }
 
@@ -31,15 +35,23 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Tree<N_ASSETS, N_BYTES>
         &self.depth
     }
 
-    fn leaves(&self) -> &[Node<N_ASSETS>] {
+    fn leaves(&self) -> &[Node<N_CURRENCIES>] {
         &self.nodes[0]
     }
 
-    fn nodes(&self) -> &[Vec<Node<N_ASSETS>>] {
+    fn nodes(&self) -> &[Vec<Node<N_CURRENCIES>>] {
         &self.nodes
     }
 
-    fn get_entry(&self, user_index: usize) -> &Entry<N_ASSETS> {
+    fn cryptocurrencies(&self) -> &[Cryptocurrency] {
+        &self.cryptocurrencies
+    }
+
+    fn entries(&self) -> &[Entry<N_CURRENCIES>] {
+        &self.mini_trees[0].entries()
+    }
+
+    fn get_entry(&self, user_index: usize) -> &Entry<N_CURRENCIES> {
         let (mini_tree_index, entry_index) = self.get_entry_location(user_index);
 
         // Retrieve the mini tree
@@ -49,7 +61,14 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Tree<N_ASSETS, N_BYTES>
         mini_tree.get_entry(entry_index)
     }
 
-    fn generate_proof(&self, index: usize) -> Result<MerkleProof<N_ASSETS, N_BYTES>, &'static str> {
+    fn generate_proof(
+        &self,
+        index: usize,
+    ) -> Result<MerkleProof<N_CURRENCIES, N_BYTES>, Box<dyn Error>>
+    where
+        [usize; N_CURRENCIES + 1]: Sized,
+        [usize; N_CURRENCIES + 2]: Sized,
+    {
         let (mini_tree_index, entry_index) = self.get_entry_location(index);
 
         // Retrieve the mini tree
@@ -61,30 +80,28 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Tree<N_ASSETS, N_BYTES>
         // Build the rest of the proof (top_proof), namely from the root of the mini tree to the root of the aggregation tree
         let mut current_index = mini_tree_index;
 
-        let mut sibling_hashes = vec![Fp::from(0); self.depth];
-        let mut sibling_sums = vec![[Fp::from(0); N_ASSETS]; self.depth];
+        let mut sibling_middle_node_hash_preimages = Vec::new();
         let mut path_indices = vec![Fp::from(0); self.depth];
 
         for level in 0..self.depth {
             let position = current_index % 2;
-            let level_start_index = current_index - position;
-            let level_end_index = level_start_index + 2;
-
             path_indices[level] = Fp::from(position as u64);
+            let sibling_index = current_index - position + (1 - position);
 
-            for i in level_start_index..level_end_index {
-                if i != current_index {
-                    sibling_hashes[level] = self.nodes[level][i].hash;
-                    sibling_sums[level] = self.nodes[level][i].balances;
-                }
+            if sibling_index < self.nodes[level].len() && level != 0 {
+                // Fetch hash preimage for sibling middle nodes
+                let sibling_node_preimage =
+                    self.get_middle_node_hash_preimage(level, sibling_index)?;
+                sibling_middle_node_hash_preimages.push(sibling_node_preimage);
             }
+
             current_index /= 2;
         }
 
-        // append the top_proof to the partial_proof
-        partial_proof.sibling_hashes.extend(sibling_hashes);
-        partial_proof.sibling_sums.extend(sibling_sums);
         partial_proof.path_indices.extend(path_indices);
+        partial_proof
+            .sibling_middle_node_hash_preimages
+            .extend(sibling_middle_node_hash_preimages);
 
         // replace the root of the partial proof with the root of the aggregation tree
         partial_proof.root = self.root.clone();
@@ -93,15 +110,18 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Tree<N_ASSETS, N_BYTES>
     }
 }
 
-impl<const N_ASSETS: usize, const N_BYTES: usize> AggregationMerkleSumTree<N_ASSETS, N_BYTES> {
+impl<const N_CURRENCIES: usize, const N_BYTES: usize>
+    AggregationMerkleSumTree<N_CURRENCIES, N_BYTES>
+{
     /// Builds a AggregationMerkleSumTree from a set of mini MerkleSumTrees
     /// The leaves of the AggregationMerkleSumTree are the roots of the mini MerkleSumTrees
     pub fn new(
-        mini_trees: Vec<MerkleSumTree<N_ASSETS, N_BYTES>>,
-    ) -> Result<Self, Box<dyn std::error::Error>>
+        mini_trees: Vec<MerkleSumTree<N_CURRENCIES, N_BYTES>>,
+        cryptocurrencies: Vec<Cryptocurrency>,
+    ) -> Result<AggregationMerkleSumTree<N_CURRENCIES, N_BYTES>, Box<dyn std::error::Error>>
     where
-        [usize; N_ASSETS + 1]: Sized,
-        [usize; 2 * (1 + N_ASSETS)]: Sized,
+        [usize; N_CURRENCIES + 1]: Sized,
+        [usize; N_CURRENCIES + 2]: Sized,
     {
         if mini_trees.is_empty() {
             return Err("Empty mini tree inputs".into());
@@ -111,26 +131,16 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> AggregationMerkleSumTree<N_ASS
         let depth = mini_trees[0].depth();
         assert!(mini_trees.iter().all(|x| x.depth() == depth));
 
-        Self::build_tree(mini_trees)
-    }
-
-    fn build_tree(
-        mini_trees: Vec<MerkleSumTree<N_ASSETS, N_BYTES>>,
-    ) -> Result<AggregationMerkleSumTree<N_ASSETS, N_BYTES>, Box<dyn std::error::Error>>
-    where
-        [usize; N_ASSETS + 1]: Sized,
-        [usize; 2 * (1 + N_ASSETS)]: Sized,
-    {
         // extract all the roots of the mini trees
         let roots = mini_trees
             .iter()
             .map(|x| x.root().clone())
-            .collect::<Vec<Node<N_ASSETS>>>();
+            .collect::<Vec<Node<N_CURRENCIES>>>();
 
         let depth = (roots.len() as f64).log2().ceil() as usize;
 
         // Calculate the accumulated balances for each asset
-        let mut balances_acc: Vec<Fp> = vec![Fp::from(0); N_ASSETS];
+        let mut balances_acc: Vec<Fp> = vec![Fp::from(0); N_CURRENCIES];
 
         for root in &roots {
             for (i, balance) in root.balances.iter().enumerate() {
@@ -158,11 +168,12 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> AggregationMerkleSumTree<N_ASS
             root,
             nodes,
             depth,
+            cryptocurrencies,
             mini_trees,
         })
     }
 
-    pub fn mini_tree(&self, tree_index: usize) -> &MerkleSumTree<N_ASSETS, N_BYTES> {
+    pub fn mini_tree(&self, tree_index: usize) -> &MerkleSumTree<N_CURRENCIES, N_BYTES> {
         &self.mini_trees[tree_index]
     }
 
@@ -186,22 +197,24 @@ mod test {
 
     use crate::aggregation_merkle_sum_tree::AggregationMerkleSumTree;
 
-    const N_ASSETS: usize = 2;
+    const N_CURRENCIES: usize = 2;
     const N_BYTES: usize = 8;
 
     #[test]
     fn test_aggregation_mst() {
         // create new mini merkle sum tree
         let mini_tree_1 =
-            MerkleSumTree::<N_ASSETS, N_BYTES>::new("src/orchestrator/csv/entry_16_1.csv").unwrap();
+            MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_csv("src/orchestrator/csv/entry_16_1.csv")
+                .unwrap();
 
         let mini_tree_2 =
-            MerkleSumTree::<N_ASSETS, N_BYTES>::new("src/orchestrator/csv/entry_16_2.csv").unwrap();
+            MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_csv("src/orchestrator/csv/entry_16_2.csv")
+                .unwrap();
 
-        let aggregation_mst = AggregationMerkleSumTree::<N_ASSETS, N_BYTES>::new(vec![
-            mini_tree_1.clone(),
-            mini_tree_2.clone(),
-        ])
+        let aggregation_mst = AggregationMerkleSumTree::<N_CURRENCIES, N_BYTES>::new(
+            vec![mini_tree_1.clone(), mini_tree_2.clone()],
+            mini_tree_1.cryptocurrencies().to_owned().to_vec(),
+        )
         .unwrap();
 
         // get root
@@ -243,16 +256,18 @@ mod test {
         // create new mini merkle sum trees. The accumulated balance for each mini tree is in the expected range
         // note that the accumulated balance of the tree generated from entry_16_3 is just in the expected range for 1 unit
         let merkle_sum_tree_1 =
-            MerkleSumTree::<N_ASSETS, N_BYTES>::new("src/orchestrator/csv/entry_16_1.csv").unwrap();
+            MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_csv("src/orchestrator/csv/entry_16_1.csv")
+                .unwrap();
 
         let merkle_sum_tree_2 =
-            MerkleSumTree::<N_ASSETS, N_BYTES>::new("src/orchestrator/csv/entry_16_2.csv").unwrap();
+            MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_csv("src/orchestrator/csv/entry_16_2.csv")
+                .unwrap();
 
         // When creating the aggregation merkle sum tree, the accumulated balance of the two mini trees is not in the expected range, an error is thrown
-        let result = AggregationMerkleSumTree::<N_ASSETS, N_BYTES>::new(vec![
-            merkle_sum_tree_1,
-            merkle_sum_tree_2.clone(),
-        ]);
+        let result = AggregationMerkleSumTree::<N_CURRENCIES, N_BYTES>::new(
+            vec![merkle_sum_tree_1, merkle_sum_tree_2.clone()],
+            merkle_sum_tree_2.cryptocurrencies().to_vec(),
+        );
 
         if let Err(e) = result {
             assert_eq!(

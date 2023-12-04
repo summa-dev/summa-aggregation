@@ -1,22 +1,21 @@
-mod entry_csv_parser;
 mod test;
-
-pub use entry_csv_parser::entry_parser;
 
 use futures::future::join_all;
 use std::{cmp::min, error::Error};
+use summa_backend::merkle_sum_tree::{utils::parse_csv_to_entries, Cryptocurrency};
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 use crate::aggregation_merkle_sum_tree::AggregationMerkleSumTree;
 use crate::executor::ExecutorSpawner;
+use crate::json_mst::JsonEntry;
 
-pub struct Orchestrator<const N_ASSETS: usize, const N_BYTES: usize> {
+pub struct Orchestrator<const N_CURRENCIES: usize, const N_BYTES: usize> {
     executor_spawner: Box<dyn ExecutorSpawner>,
     entry_csvs: Vec<String>,
 }
 
-impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES> {
+impl<const N_CURRENCIES: usize, const N_BYTES: usize> Orchestrator<N_CURRENCIES, N_BYTES> {
     pub fn new(executor_spawner: Box<dyn ExecutorSpawner>, entry_csvs: Vec<String>) -> Self {
         Self {
             executor_spawner,
@@ -61,10 +60,10 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
     pub async fn create_aggregation_mst(
         self,
         executor_count: usize,
-    ) -> Result<AggregationMerkleSumTree<N_ASSETS, N_BYTES>, Box<dyn Error>>
+    ) -> Result<AggregationMerkleSumTree<N_CURRENCIES, N_BYTES>, Box<dyn Error>>
     where
-        [usize; N_ASSETS + 1]: Sized,
-        [usize; 2 * (1 + N_ASSETS)]: Sized,
+        [usize; N_CURRENCIES + 1]: Sized,
+        [usize; N_CURRENCIES + 2]: Sized,
     {
         let entries_per_executor = self.entry_csvs.len() / executor_count;
 
@@ -110,7 +109,7 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
                                         Some(entries) => entries,
                                         None => break,
                                     };
-                                    let processed_task = match executor.generate_tree::<N_ASSETS, N_BYTES>(entries).await {
+                                    let processed_task = match executor.generate_tree::<N_CURRENCIES, N_BYTES>(entries).await {
                                         Ok(entries) => entries,
                                         Err(e) => {
                                             eprintln!("Executor_{:?}: error while processing entries {:?}", i, e);
@@ -146,8 +145,12 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
             let cloned_cancel_token = cancel_token.clone();
             tokio::spawn(async move {
                 for file_path in entry_csvs_slice.iter() {
-                    let entries = match entry_parser::<_, N_ASSETS, N_BYTES>(file_path) {
-                        Ok(entries) => entries,
+                    let entries = match parse_csv_to_entries::<_, N_CURRENCIES, N_BYTES>(file_path)
+                    {
+                        Ok((_, entries)) => entries
+                            .iter()
+                            .map(JsonEntry::from_entry)
+                            .collect::<Vec<JsonEntry>>(),
                         Err(e) => {
                             eprintln!(
                                 "Executor_{:?}: Error while processing file {:?}: {:?}",
@@ -213,6 +216,18 @@ impl<const N_ASSETS: usize, const N_BYTES: usize> Orchestrator<N_ASSETS, N_BYTES
 
         let all_merkle_sum_tree = ordered_tree_results.into_iter().flatten().collect();
 
-        AggregationMerkleSumTree::new(all_merkle_sum_tree)
+        AggregationMerkleSumTree::new(
+            all_merkle_sum_tree,
+            vec![
+                Cryptocurrency {
+                    name: "BTC".to_string(),
+                    chain: "mainnet".to_string(),
+                },
+                Cryptocurrency {
+                    name: "ETH".to_string(),
+                    chain: "mainnet".to_string(),
+                },
+            ],
+        )
     }
 }

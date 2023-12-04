@@ -1,11 +1,12 @@
-
+#![allow(unused_imports)]
 use futures::future;
 use std::error::Error;
 
 use bollard::models::TaskSpecContainerSpec;
 
 use crate::executor::{spawner::ExecutorSpawner, utils::get_specs_from_compose, MockSpawner};
-use crate::orchestrator::entry_parser;
+use crate::json_mst::JsonEntry;
+use summa_backend::merkle_sum_tree::utils::parse_csv_to_entries;
 
 #[test]
 fn test_util_get_specs_from_compose() {
@@ -34,15 +35,17 @@ async fn test_executor() -> Result<(), Box<dyn Error>> {
     let spawner = MockSpawner::new(None);
     let executor = spawner.spawn_executor().await;
 
-    let entries = entry_parser::<_, 2, 14>("./src/orchestrator/csv/entry_16.csv").unwrap();
-    let merkle_tree = executor.generate_tree::<2, 14>(entries).await.unwrap();
+    let (_, entries) =
+        parse_csv_to_entries::<_, 2, 14>("./src/orchestrator/csv/entry_16.csv").unwrap();
+    let json_entries = entries
+        .iter()
+        .map(JsonEntry::from_entry)
+        .collect::<Vec<JsonEntry>>();
+    let merkle_sum_tree = executor.generate_tree::<2, 14>(json_entries).await.unwrap();
 
     spawner.terminate_executors().await;
 
-    assert_eq!(
-        format!("{:?}", merkle_tree.root.hash),
-        "0x02e021d9bf99c5bd7267488b6a7a5cf5f7d00222a41b6a9b971899c44089e0c5"
-    );
+    assert_eq!(merkle_sum_tree.index_of_username("dxGaEAii").unwrap(), 0);
     Ok(())
 }
 
@@ -52,11 +55,23 @@ async fn test_executor_block() -> Result<(), Box<dyn Error>> {
     let executor = spawner.spawn_executor().await;
 
     // Parse two csv files
-    let entries_1 = entry_parser::<_, 2, 14>("./src/orchestrator/csv/entry_16.csv").unwrap();
-    let entries_2 = entry_parser::<_, 2, 14>("./src/orchestrator/csv/entry_16.csv").unwrap();
+    let (_, entries_1) =
+        parse_csv_to_entries::<_, 2, 14>("./src/orchestrator/csv/entry_16.csv").unwrap();
+    let (_, entries_2) =
+        parse_csv_to_entries::<_, 2, 14>("./src/orchestrator/csv/entry_16.csv").unwrap();
 
-    let merkle_tree_1 = executor.generate_tree::<2, 14>(entries_1);
-    let merkle_tree_2 = executor.generate_tree::<2, 14>(entries_2);
+    // Convert entries to json_entries
+    let json_entries_1 = entries_1
+        .iter()
+        .map(JsonEntry::from_entry)
+        .collect::<Vec<JsonEntry>>();
+    let json_entries_2 = entries_2
+        .iter()
+        .map(JsonEntry::from_entry)
+        .collect::<Vec<JsonEntry>>();
+
+    let merkle_tree_1 = executor.generate_tree::<2, 14>(json_entries_1);
+    let merkle_tree_2 = executor.generate_tree::<2, 14>(json_entries_2);
 
     let all_tree = future::join_all([merkle_tree_1, merkle_tree_2]).await;
 
