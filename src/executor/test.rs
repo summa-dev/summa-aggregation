@@ -1,70 +1,68 @@
-#[cfg(test)]
-mod test {
-    use futures::future;
-    use std::error::Error;
 
-    use bollard::models::TaskSpecContainerSpec;
+use futures::future;
+use std::error::Error;
 
-    use crate::executor::{spawner::ExecutorSpawner, utils::get_specs_from_compose, MockSpawner};
-    use crate::orchestrator::entry_parser;
+use bollard::models::TaskSpecContainerSpec;
 
-    #[test]
-    fn test_util_get_specs_from_compose() {
-        let (network_options, service_spec) =
-            get_specs_from_compose("mini_tree", "docker-compose.yml").unwrap();
+use crate::executor::{spawner::ExecutorSpawner, utils::get_specs_from_compose, MockSpawner};
+use crate::orchestrator::entry_parser;
 
-        let service_name = "mini_tree";
-        assert_eq!(network_options.name, service_name);
-        assert_eq!(network_options.driver, "overlay");
+#[test]
+fn test_util_get_specs_from_compose() {
+    let (network_options, service_spec) =
+        get_specs_from_compose("mini_tree", "docker-compose.yml").unwrap();
 
-        assert_eq!(service_spec.name.unwrap(), service_name);
-        assert!(service_spec.mode.is_some());
-        assert!(service_spec.task_template.is_some());
-        assert!(service_spec.endpoint_spec.is_some());
-        assert_eq!(
-            service_spec.task_template.unwrap().container_spec.unwrap(),
-            TaskSpecContainerSpec {
-                image: Some("sifnoc/summa-aggregation:mini-tree-v0.1".to_string()),
-                ..Default::default()
-            }
-        );
-    }
+    let service_name = "mini_tree";
+    assert_eq!(network_options.name, service_name);
+    assert_eq!(network_options.driver, "overlay");
 
-    #[tokio::test]
-    async fn test_executor() -> Result<(), Box<dyn Error>> {
-        let spawner = MockSpawner::new(None);
-        let executor = spawner.spawn_executor().await;
+    assert_eq!(service_spec.name.unwrap(), service_name);
+    assert!(service_spec.mode.is_some());
+    assert!(service_spec.task_template.is_some());
+    assert!(service_spec.endpoint_spec.is_some());
+    assert_eq!(
+        service_spec.task_template.unwrap().container_spec.unwrap(),
+        TaskSpecContainerSpec {
+            image: Some("sifnoc/summa-aggregation:mini-tree-v0.1".to_string()),
+            ..Default::default()
+        }
+    );
+}
 
-        let entries = entry_parser::<_, 2, 14>("./src/orchestrator/csv/entry_16.csv").unwrap();
-        let merkle_tree = executor.generate_tree::<2, 14>(entries).await.unwrap();
+#[tokio::test]
+async fn test_executor() -> Result<(), Box<dyn Error>> {
+    let spawner = MockSpawner::new(None);
+    let executor = spawner.spawn_executor().await;
 
-        spawner.terminate_executors().await;
+    let entries = entry_parser::<_, 2, 14>("./src/orchestrator/csv/entry_16.csv").unwrap();
+    let merkle_tree = executor.generate_tree::<2, 14>(entries).await.unwrap();
 
-        assert_eq!(
-            format!("{:?}", merkle_tree.root.hash),
-            "0x02e021d9bf99c5bd7267488b6a7a5cf5f7d00222a41b6a9b971899c44089e0c5"
-        );
-        Ok(())
-    }
+    spawner.terminate_executors().await;
 
-    #[tokio::test]
-    async fn test_executor_block() -> Result<(), Box<dyn Error>> {
-        let spawner = MockSpawner::new(None);
-        let executor = spawner.spawn_executor().await;
+    assert_eq!(
+        format!("{:?}", merkle_tree.root.hash),
+        "0x02e021d9bf99c5bd7267488b6a7a5cf5f7d00222a41b6a9b971899c44089e0c5"
+    );
+    Ok(())
+}
 
-        // Parse two csv files
-        let entries_1 = entry_parser::<_, 2, 14>("./src/orchestrator/csv/entry_16.csv").unwrap();
-        let entries_2 = entry_parser::<_, 2, 14>("./src/orchestrator/csv/entry_16.csv").unwrap();
+#[tokio::test]
+async fn test_executor_block() -> Result<(), Box<dyn Error>> {
+    let spawner = MockSpawner::new(None);
+    let executor = spawner.spawn_executor().await;
 
-        let merkle_tree_1 = executor.generate_tree::<2, 14>(entries_1);
-        let merkle_tree_2 = executor.generate_tree::<2, 14>(entries_2);
+    // Parse two csv files
+    let entries_1 = entry_parser::<_, 2, 14>("./src/orchestrator/csv/entry_16.csv").unwrap();
+    let entries_2 = entry_parser::<_, 2, 14>("./src/orchestrator/csv/entry_16.csv").unwrap();
 
-        let all_tree = future::join_all([merkle_tree_1, merkle_tree_2]).await;
+    let merkle_tree_1 = executor.generate_tree::<2, 14>(entries_1);
+    let merkle_tree_2 = executor.generate_tree::<2, 14>(entries_2);
 
-        spawner.terminate_executors().await;
+    let all_tree = future::join_all([merkle_tree_1, merkle_tree_2]).await;
 
-        assert_eq!(all_tree.len(), 2);
+    spawner.terminate_executors().await;
 
-        Ok(())
-    }
+    assert_eq!(all_tree.len(), 2);
+
+    Ok(())
 }

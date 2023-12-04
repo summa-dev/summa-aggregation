@@ -1,9 +1,16 @@
+#![feature(generic_const_exprs)]
+use axum::{routing::post, Router};
 use std::error::Error;
 use std::net::SocketAddr;
-use axum::{routing::post, Router};
 
-use summa_backend::{contracts::signer::{SummaSigner, AddressInput}, apis::round::Round, tests::initialize_test_env};
-use summa_aggregation::{executor::CloudSpawner, orchestrator::Orchestrator, mini_tree_generator::create_mst};
+use summa_aggregation::{
+    executor::CloudSpawner, mini_tree_generator::create_mst, orchestrator::Orchestrator,
+};
+use summa_backend::{
+    apis::round::Round,
+    contracts::signer::{AddressInput, SummaSigner},
+    tests::initialize_test_env,
+};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -42,13 +49,21 @@ async fn main() -> Result<(), Box<dyn Error>> {
         "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
         anvil.endpoint().as_str(),
         AddressInput::Address(summa_contract.address()),
-    ).await?;
+    )
+    .await?;
 
     // Once get the aggregation merkle sum tree, we can initialize the round.
     let timestamp = 1u64;
     let asset_csv = "examples/assets.csv";
     let params_path = "examples/hermez-raw-11";
-    let round = Round::<LEVELS, N_ASSETS, N_BYTES>::new(&signer, Box::new(aggregation_merkle_sum_tree), asset_csv, params_path, timestamp).unwrap();
+    let round = Round::<LEVELS, N_ASSETS, N_BYTES>::new(
+        &signer,
+        Box::new(aggregation_merkle_sum_tree),
+        asset_csv,
+        params_path,
+        timestamp,
+    )
+    .unwrap();
 
     // Next, generate the proof of inclusion.
     let inclusion_proof_of_user0 = round.get_proof_of_inclusion(0).unwrap();
