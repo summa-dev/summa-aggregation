@@ -74,27 +74,40 @@ impl<const N_CURRENCIES: usize, const N_BYTES: usize> Tree<N_CURRENCIES, N_BYTES
         // Retrieve the mini tree
         let mini_tree = &self.mini_trees[mini_tree_index];
 
+        // Retrieve sibling mini tree
+        let sibling_mini_tree_index = if mini_tree_index % 2 == 0 {
+            mini_tree_index + 1
+        } else {
+            mini_tree_index - 1
+        };
+        let sibling_mini_tree = &self.mini_trees[sibling_mini_tree_index];
+
         // Build the partial proof, namely from the leaf to the root of the mini tree
         let mut partial_proof = mini_tree.generate_proof(entry_index)?;
+        let mut sibling_middle_node_hash_preimages = Vec::new();
+
+        // Retrieve sibling mini tree root hash preimage
+        let sibling_mini_tree_node_preimage = sibling_mini_tree
+            .get_middle_node_hash_preimage(*sibling_mini_tree.depth(), 0)
+            .unwrap();
+
+        sibling_middle_node_hash_preimages.push(sibling_mini_tree_node_preimage);
 
         // Build the rest of the proof (top_proof), namely from the root of the mini tree to the root of the aggregation tree
         let mut current_index = mini_tree_index;
-
-        let mut sibling_middle_node_hash_preimages = Vec::new();
         let mut path_indices = vec![Fp::from(0); self.depth];
 
         for level in 0..self.depth {
             let position = current_index % 2;
             path_indices[level] = Fp::from(position as u64);
-            let sibling_index = current_index - position + (1 - position);
 
+            let sibling_index = current_index - position + (1 - position);
             if sibling_index < self.nodes[level].len() && level != 0 {
                 // Fetch hash preimage for sibling middle nodes
                 let sibling_node_preimage =
                     self.get_middle_node_hash_preimage(level, sibling_index)?;
                 sibling_middle_node_hash_preimages.push(sibling_node_preimage);
             }
-
             current_index /= 2;
         }
 
@@ -252,15 +265,45 @@ mod test {
     }
 
     #[test]
+    fn test_aggregation_mst_compare_mst_result() {
+        // create new mini merkle sum tree
+        let mut mini_trees = Vec::new();
+        for i in 1..=4 {
+            let mini_tree = MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_csv(&format!(
+                "src/orchestrator/csv/entry_16_{}.csv",
+                i
+            ))
+            .unwrap();
+            mini_trees.push(mini_tree);
+        }
+        let cryptocurrencies = mini_trees[0].cryptocurrencies().to_owned().to_vec();
+        let aggregation_mst =
+            AggregationMerkleSumTree::<N_CURRENCIES, N_BYTES>::new(mini_trees, cryptocurrencies)
+                .unwrap();
+
+        let aggregation_mst_root = aggregation_mst.root();
+
+        // The entry_64.csv file is the aggregation of entry_16_1, entry_16_2, entry_16_3, entry_16_4
+        let single_merkle_sum_tree =
+            MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_csv("src/orchestrator/csv/entry_64.csv")
+                .unwrap();
+
+        assert_eq!(
+            aggregation_mst_root.hash,
+            single_merkle_sum_tree.root().hash
+        );
+    }
+
+    #[test]
     fn test_aggregation_mst_overflow() {
         // create new mini merkle sum trees. The accumulated balance for each mini tree is in the expected range
-        // note that the accumulated balance of the tree generated from entry_16_3 is just in the expected range for 1 unit
+        // note that the accumulated balance of the tree generated from entry_16_4 is just in the expected range for 1 unit
         let merkle_sum_tree_1 =
-            MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_csv("src/orchestrator/csv/entry_16_1.csv")
+            MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_csv("src/orchestrator/csv/entry_16.csv")
                 .unwrap();
 
         let merkle_sum_tree_2 =
-            MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_csv("src/orchestrator/csv/entry_16_2.csv")
+            MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_csv("src/orchestrator/csv/entry_16_no_overflow.csv")
                 .unwrap();
 
         // When creating the aggregation merkle sum tree, the accumulated balance of the two mini trees is not in the expected range, an error is thrown

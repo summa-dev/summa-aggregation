@@ -14,7 +14,7 @@ use summa_backend::{
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    // In this example, we will use local mini-tree server to generate mini-tree    
+    // In this example, we will use local mini-tree server to generate mini-tree
     tokio::spawn(async move {
         let app = Router::new().route("/", post(create_mst));
         let addr = SocketAddr::from(([0, 0, 0, 0], 4000));
