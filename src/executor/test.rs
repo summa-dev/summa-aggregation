@@ -24,7 +24,7 @@ fn test_util_get_specs_from_compose() {
     assert_eq!(
         service_spec.task_template.unwrap().container_spec.unwrap(),
         TaskSpecContainerSpec {
-            image: Some("sifnoc/summa-aggregation:mini-tree-v0.1".to_string()),
+            image: Some("summadev/summa-aggregation-mini-tree:latest".to_string()),
             ..Default::default()
         }
     );

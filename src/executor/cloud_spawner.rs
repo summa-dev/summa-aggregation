@@ -16,7 +16,7 @@ pub struct CloudSpawner {
     service_info: Option<(String, String)>,
     worker_counter: Arc<AtomicUsize>,
     worker_node_url: Vec<String>,
-    exposed_port: i64,
+    default_port: i64,
 }
 
 /// `CloudSpawner` is responsible for managing the lifecycle of workers in a cloud environment.
@@ -29,14 +29,14 @@ impl CloudSpawner {
     pub fn new(
         service_info: Option<(String, String)>, // If the user want to use docker-compose.yml for docker swarm
         worker_node_url: Vec<String>,
-        exposed_port: i64,
+        default_port: i64,
     ) -> Self {
         assert!(!worker_node_url.is_empty(), "Worker node url is empty");
         CloudSpawner {
             service_info,
             worker_counter: Arc::new(AtomicUsize::new(0)),
             worker_node_url,
-            exposed_port,
+            default_port,
         }
     }
 
@@ -147,15 +147,24 @@ impl ExecutorSpawner for CloudSpawner {
 
         // The traffic is routed to the service by the swarm manager.
         // So, All executor can use the same exposed endpoint for distributing task to multiple workers.
-        let endpoint = self.exposed_port;
+        let port = self.default_port;
         let node_url = self.worker_node_url[current_worker_counter].clone();
         let worker_counter = self.worker_counter.clone();
         Box::pin(async move {
             if worker_counter.load(Ordering::SeqCst) == 0 {
                 let _ = rx.await;
             }
+            // Check if the URL already contains a port
+            let has_port = node_url.split(':').last().unwrap().parse::<u16>().is_ok();
+
+            // Append the port if it's not there
+            let final_url = if has_port {
+                node_url.clone()
+            } else {
+                format!("{}:{}", node_url, port)
+            };
             worker_counter.fetch_add(1, Ordering::SeqCst);
-            Executor::new(format!("http://{}:{}", node_url, endpoint), None)
+            Executor::new(format!("http://{}", final_url), None)
         })
     }
 

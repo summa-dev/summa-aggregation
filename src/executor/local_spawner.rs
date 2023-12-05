@@ -134,7 +134,7 @@ mod tests {
         let spawner = LocalSpawner {
             docker: Docker::connect_with_local_defaults().unwrap(),
             worker_counter: AtomicUsize::new(0),
-            image_name: "summa-aggregation".to_string(), // Should exist on local registry
+            image_name: "summadev/summa-aggregation-mini-tree:latest".to_string(), // Should exist on local registry
             container_name: "mini_tree_generator".to_string(),
         };
 

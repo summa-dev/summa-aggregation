@@ -302,9 +302,10 @@ mod test {
             MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_csv("src/orchestrator/csv/entry_16.csv")
                 .unwrap();
 
-        let merkle_sum_tree_2 =
-            MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_csv("src/orchestrator/csv/entry_16_no_overflow.csv")
-                .unwrap();
+        let merkle_sum_tree_2 = MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_csv(
+            "src/orchestrator/csv/entry_16_no_overflow.csv",
+        )
+        .unwrap();
 
         // When creating the aggregation merkle sum tree, the accumulated balance of the two mini trees is not in the expected range, an error is thrown
         let result = AggregationMerkleSumTree::<N_CURRENCIES, N_BYTES>::new(

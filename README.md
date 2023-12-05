@@ -16,7 +16,7 @@ The diagram illustrates a distributed approach to constructing the `AggregatedMe
 
 ## Orchestrator
 
-The Orchestrator in the Summa Aggregation serves as the central management component, coordinating the data processing activities. It plays a pivotal role in coordinating the activities of Executors and Workers, improving of tasks in the generation of Merkle sum tree.
+The Orchestrator in the Summa Aggregation serves as the central management component, coordinating the data processing activities. It plays a pivotal role in coordinating the activities of Executors and Workers, improving efficiency of tasks of building Merkle sum tree.
 The final result of the Orchestrator is the construction of the `AggregationMerkleSumTree`. This is achieved by aggregating the mini-trees constructed by the Workers. The Worker in here refers to a container running `mini-tree-server`.
 
 Key functions of the Orchestrator include:
@@ -31,7 +31,7 @@ Key functions of the Orchestrator include:
 
 ## Executor and Worker
 
-The Executor acts as a crucial intermediary between the Orchestrator and Workers, facilitating the data processing workflow. Spawned by the Orchestrator, each Executor operates in a one-to-one relationship with a Worker. A Worker in this context refers to a container that runs the `mini-tree-server`. Its primary function is to generate a segment of the AggregationMerkleSumTree, known as a `mini-tree`, by processing entry data. These mini-trees are then aggregated by the Orchestrator to form the complete AggregationMerkleSumTree.
+The Executor acts as a crucial intermediary between the Orchestrator and Workers, facilitating the data processing workflow. Spawned by the Orchestrator, each Executor operates in a one-to-one relationship with a Worker. Its primary function is to generate a segment of the AggregationMerkleSumTree, known as a `mini-tree`, by processing entry data. These mini-trees are then aggregated by the Orchestrator to form the complete AggregationMerkleSumTree.
 
 Key aspects of the Executor's role include:
 
@@ -152,23 +152,91 @@ To spawn more workers, follow these steps:
 
 Scaling service allows you to adjust the number of workers more easily than spawning each worker individually.
 
-## Test
+## Running test
 
-Before starting the tests, you need to build the `mini-tree-server` image and name it "summa-aggregation".
-
-Build the image with the following command:
+You can run the tests using following command:
 
 ```bash
-docker build . -t summa-aggregation
+cargo test --release
 ```
 
-Ensure that the `summa-aggregation:latest` image exists in your local registry.
+Note: The Worker will run locally and uses port 4000 as the default for its server.
+Please ensure that this port is not already in use to avoid errors.
 
-Then, you can run the tests using this command:
+## Running Additional Tests Involving Docker and Docker Swarm
+
+To run additional tests involving Docker and Docker Swarm mode, ensure that your Docker registry contains the "summadev/summa-aggregation-mini-tree" image.
+
+If you do not have this image, you can either build it or download it.
+
+### Building the docker image
+
+Build the image using the following command:
 
 ```bash
-cargo test
+docker build . -t summadev/summa-aggregation-mini-tree
 ```
 
-Note that the Worker uses port 4000 as the default for its server.
-Please ensure that this port is not already in use when you meet error.
+### Downloading the Docker Image
+
+Alternatively, you can download the image from Docker Hub using the following command:
+
+```bash
+docker pull summadev/summa-aggregation-mini-tree
+```
+
+Ensure that the "summadev/summa-aggregation-mini-tree" image exists in your local Docker registry.
+
+### Testing with LocalSpawner
+
+The following command runs an additional test case using the LocalSpawner, which spawns worker containers in the local Docker environment. This extra test case involves running two containers during the testing process:
+
+```bash
+cargo test --features docker
+```
+
+### Testing with CloudSpawner
+
+If your Docker environment is successfully running in Swarm mode, you can run an additional test case that spawns workers on Swarm nodes using the `CloudSpawner`. Before running this test, please refer to the section "Spawning More Workers with CloudSpawner" to check your Docker Swarm setup.
+
+```bash
+cargo test --features docker-swarm
+```
+
+Please ensure that your Docker Swarm has at least one node connected to the manager node. Also, verify that each worker node in the swarm has the "summadev/summa-aggregation-mini-tree" image in its Docker registry. If a node connected to the manager node does not have the image, it will not be able to spawn workers on that node.
+
+## Summa Aggregation Example
+
+This example demonstrates the setup and operation of a distributed environment using Summa Aggregation, including the initialization of round and generating inclusion proof. A notable aspect of this demonstration is how the AggregationMerkleSumTree can produce the generation of inclusion proofs, similarly to the MerkleSumTree.
+
+### 1. Setup Distributed Environment
+
+Custodians can leverage any cloud infrastructure to establish worker nodes. In this example, we use two local servers running mini-tree services as workers, rather than deploying worker containers on remote nodes.
+
+Key steps:
+
+- **Spawning Worker Nodes**: Two local servers are spawned, each running a mini-tree service.
+
+- **Worker URLs**: It is crucial to ensure the number of worker URLs matches the number of executors. In this example, we use `127.0.0.1:4000` and `127.0.0.1:4001`.
+
+### 2. Initialize the Round with Aggregation Merkle Sum Tree
+
+Initiating the round with an `AggregationMerkleSumTree` is a key step after setting up the distributed environment with worker nodes. This process involves the `Orchestrator` and the `Round`.
+
+- **Orchestrator and AggregationMerkleSumTree**: The `Orchestrator` is initialized with the `CloudSpawner` and paths to the CSV files containing entry data. It uses this information to generate the `AggregationMerkleSumTree`, which forms the basis for the round's operations.
+
+- **Round Initialization**: Subsequently, the `Round` is initialized using the aggregation merkle sum tree. The `Round` is integral for interactions with the Summa contract and relies on the setup performed by the `Orchestrator`.
+
+### 3. Interact with the Summa Contract and Generate Proof of Inclusion
+
+The actual example only shows the creation of an inclusion proof.
+
+For detailed information on interaction patterns similar to those in the `summa-backend` example, refer to the ['summa_solvency_flow'](https://github.com/summa-dev/summa-solvency/blob/master/backend/examples/summa_solvency_flow.rs).
+
+### Example Execution
+
+Run the example using the following command:
+
+```bash
+cargo run --release --example aggregation_flow
+```

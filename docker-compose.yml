@@ -3,7 +3,7 @@ version: '3.8'
 # CloudSpawner only reads from the first element of lists
 services:
   mini_tree:
-    image: sifnoc/summa-aggregation:mini-tree-v0.1
+    image: summadev/summa-aggregation-mini-tree:latest
     ports: 
       - published: 4000
         target: 4000
