@@ -10,6 +10,14 @@ use crate::aggregation_merkle_sum_tree::AggregationMerkleSumTree;
 use crate::executor::ExecutorSpawner;
 use crate::json_mst::JsonEntry;
 
+/// The Orchestrator in Summa Aggregation
+///
+/// It serves as the central management component, coordinating data processing activities
+/// between Executors and Workers, thereby improving the efficiency of building the Merkle sum tree.
+///
+/// Functions include dynamically spawning Executors, managing task distribution,
+/// handling errors and pipeline control, and building the `AggregationMerkleSumTree`
+/// by aggregating mini-trees constructed by the Workers.
 pub struct Orchestrator<const N_CURRENCIES: usize, const N_BYTES: usize> {
     executor_spawner: Box<dyn ExecutorSpawner>,
     entry_csvs: Vec<String>,
@@ -23,12 +31,13 @@ impl<const N_CURRENCIES: usize, const N_BYTES: usize> Orchestrator<N_CURRENCIES,
         }
     }
 
-    // Calculate the range of tasks to be assigned to a executor.
-    //
-    // * `executor_index` - The index of the executor.
-    // * `total_executors` - The total number of executor.
-    //
-    // A tuple representing the start and end indices of the tasks assigned to the executor
+    /// Calculate the range of tasks to be assigned to a executor.
+    ///
+    /// Parameters:
+    /// * `executor_index` - The index of the executor.
+    /// * `total_executors` - The total number of executors.
+    ///
+    /// A tuple representing the start and end indices of the tasks assigned to the executor
     fn calculate_task_range(
         &self,
         executor_index: usize,
@@ -46,8 +55,12 @@ impl<const N_CURRENCIES: usize, const N_BYTES: usize> Orchestrator<N_CURRENCIES,
     }
 
     /// Processes a list of CSV files concurrently using executors and aggregates the results.
+    /// This involves splitting the CSV files based on available executors, distributing tasks,
+    /// and aggregating the results into an `AggregationMerkleSumTree`.
     ///
-    /// * `executor_count` - The number of executors to use.
+    /// * `executor_count` - The number of executors to use.\
+    ///
+    /// Note: After processing, executors are terminated to release resources.
     ///
     /// Data flow
     ///

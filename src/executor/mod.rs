@@ -17,6 +17,16 @@ use tokio::time::{sleep, Duration};
 use crate::json_mst::{JsonEntry, JsonMerkleSumTree};
 use summa_backend::merkle_sum_tree::MerkleSumTree;
 
+/// Executor role and functionality.
+/// Acts as an intermediary between the Orchestrator and Workers, facilitating the data processing workflow.
+/// Each Executor operates in a one-to-one relationship with a Worker, processing entry data into `mini-tree`.
+///
+/// Key aspects of the Executor's role include:
+/// - **Spawning and Connection**: Executors connect with Workers to execute tasks, enhancing the system's scalability.
+/// - **Data Handling and Task Distribution**: Executors manage and distribute data entries, ensuring smooth workflow
+/// - **Communication Bridge**: They facilitate communication within the data pipeline, relaying 'mini-tree' from Workers to the Orchestrator.
+///
+/// Executors are dynamically spawned and connected to Workers for task execution.
 #[derive(Clone)]
 pub struct Executor {
     client: Client,
