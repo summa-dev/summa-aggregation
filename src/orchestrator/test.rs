@@ -30,8 +30,14 @@ async fn test_none_exist_csv() {
             "./src/orchestrator/csv/no_exist.csv".to_string(),
         ],
     );
-    let one_mini_tree_result = orchestrator.create_aggregation_mst(2).await.unwrap();
-    assert_eq!(&0, one_mini_tree_result.depth());
+    match orchestrator.create_aggregation_mst(2).await {
+        Ok(_) => panic!("Expected an error"),
+        Err(e) => {
+            assert!(e
+                .to_string()
+                .contains("Mismatch in generated mini tree counts and given CSV counts"));
+        }
+    }
 }
 
 #[tokio::test]
@@ -46,15 +52,22 @@ async fn test_none_exist_worker() {
             "./src/orchestrator/csv/entry_16_2.csv".to_string(),
         ],
     );
-    let empty_mini_tree_error = orchestrator.create_aggregation_mst(2).await.unwrap_err();
-    assert_eq!("Empty mini tree inputs", empty_mini_tree_error.to_string());
+
+    match orchestrator.create_aggregation_mst(2).await {
+        Ok(_) => panic!("Expected an error"),
+        Err(e) => {
+            assert!(e
+                .to_string()
+                .contains("Mismatch in generated mini tree counts and given CSV counts"));
+        }
+    }
 }
 
 #[cfg(feature = "docker")]
 #[tokio::test]
 async fn test_with_containers() {
     let spawner = LocalSpawner::new(
-        "summa-aggregation".to_string(),
+        "summadev/summa-aggregation-mini-tree:latest".to_string(),
         "orchestrator_test".to_string(),
     );
 
@@ -66,8 +79,9 @@ async fn test_with_containers() {
         ],
     );
     let aggregation_merkle_sum_tree = orchestrator.create_aggregation_mst(2).await.unwrap();
+
     assert_eq!(16, aggregation_merkle_sum_tree.mini_tree(0).entries().len());
-    assert_eq!(16, aggregation_merkle_sum_tree.mini_tree(0).entries().len());
+    assert_eq!(16, aggregation_merkle_sum_tree.mini_tree(1).entries().len());
 }
 
 #[cfg(feature = "docker-swarm")]
@@ -88,5 +102,5 @@ async fn test_with_swarm_service() {
     );
     let aggregation_merkle_sum_tree = orchestrator.create_aggregation_mst(2).await.unwrap();
     assert_eq!(16, aggregation_merkle_sum_tree.mini_tree(0).entries().len());
-    assert_eq!(16, aggregation_merkle_sum_tree.mini_tree(0).entries().len());
+    assert_eq!(16, aggregation_merkle_sum_tree.mini_tree(1).entries().len());
 }

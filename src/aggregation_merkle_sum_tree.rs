@@ -48,7 +48,7 @@ impl<const N_CURRENCIES: usize, const N_BYTES: usize> Tree<N_CURRENCIES, N_BYTES
     }
 
     fn entries(&self) -> &[Entry<N_CURRENCIES>] {
-        &self.mini_trees[0].entries()
+        self.mini_trees[0].entries()
     }
 
     fn get_entry(&self, user_index: usize) -> &Entry<N_CURRENCIES> {
@@ -97,6 +97,7 @@ impl<const N_CURRENCIES: usize, const N_BYTES: usize> Tree<N_CURRENCIES, N_BYTES
         let mut current_index = mini_tree_index;
         let mut path_indices = vec![Fp::from(0); self.depth];
 
+        #[allow(clippy::needless_range_loop)]
         for level in 0..self.depth {
             let position = current_index % 2;
             path_indices[level] = Fp::from(position as u64);

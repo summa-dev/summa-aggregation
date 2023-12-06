@@ -5,6 +5,7 @@ use bollard::{
 };
 use std::{
     default::Default,
+    env,
     error::Error,
     future::Future,
     pin::Pin,
@@ -24,8 +25,16 @@ pub struct LocalSpawner {
 
 impl LocalSpawner {
     pub fn new(image_name: String, container_name: String) -> Self {
+        let docker = match env::var("DOCKER_HOST") {
+            // Read `DOCKER_HOST` environment variable as default
+            Ok(host) => Docker::connect_with_http_defaults()
+                .unwrap_or_else(|_| panic!("Failed to connect to {} for using Docker", host)),
+            _ => Docker::connect_with_local_defaults()
+                .unwrap_or_else(|_| panic!("Failed to connect to Docker")),
+        };
+
         LocalSpawner {
-            docker: Docker::connect_with_local_defaults().unwrap(),
+            docker,
             worker_counter: AtomicUsize::new(0),
             image_name,
             container_name,
@@ -52,6 +61,8 @@ impl LocalSpawner {
             platform: None,
         };
 
+        println!("docker-info: {:?}", docker.info().await?);
+
         docker
             .create_container(Some(create_container_options), config.clone())
             .await?;
@@ -65,6 +76,8 @@ impl LocalSpawner {
 
         let container_info: ContainerInspectResponse =
             docker.inspect_container(&container_name, None).await?;
+
+        println!("container_info: {:?}", container_info);
 
         Ok(container_info)
     }
@@ -124,19 +137,17 @@ impl ExecutorSpawner for LocalSpawner {
     }
 }
 
+#[cfg(feature = "docker")]
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::atomic::AtomicUsize;
 
     #[tokio::test]
     async fn test_executor_spawner() {
-        let spawner = LocalSpawner {
-            docker: Docker::connect_with_local_defaults().unwrap(),
-            worker_counter: AtomicUsize::new(0),
-            image_name: "summadev/summa-aggregation-mini-tree:latest".to_string(), // Should exist on local registry
-            container_name: "mini_tree_generator".to_string(),
-        };
+        let spawner = LocalSpawner::new(
+            "summadev/summa-aggregation-mini-tree:latest".to_string(),
+            "executor_test".to_string(),
+        );
 
         // Spawn 2 executors
         let executor_1 = spawner.spawn_executor().await;

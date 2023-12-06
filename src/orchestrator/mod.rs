@@ -2,7 +2,7 @@ mod test;
 
 use futures::future::join_all;
 use std::{cmp::min, error::Error};
-use summa_backend::merkle_sum_tree::{utils::parse_csv_to_entries, Cryptocurrency};
+use summa_backend::merkle_sum_tree::{utils::parse_csv_to_entries, Cryptocurrency, MerkleSumTree};
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
@@ -87,7 +87,6 @@ impl<const N_CURRENCIES: usize, const N_BYTES: usize> Orchestrator<N_CURRENCIES,
             //
             let (entries_tx, mut entries_rx) = mpsc::channel(channel_size);
             let (tree_tx, tree_rx) = mpsc::channel(channel_size);
-
             // Executor
             //
             // Spawn executors that process entries with Worker.
@@ -214,19 +213,22 @@ impl<const N_CURRENCIES: usize, const N_BYTES: usize> Orchestrator<N_CURRENCIES,
         // Terminate executors
         self.executor_spawner.terminate_executors().await;
 
-        let all_merkle_sum_tree = ordered_tree_results.into_iter().flatten().collect();
+        let all_merkle_sum_tree: Vec<MerkleSumTree<N_CURRENCIES, N_BYTES>> =
+            ordered_tree_results.into_iter().flatten().collect();
+
+        // Occur error if the number of mini_tree in 'all_merkle_sum_tree' is not equal to the number of entry_csvs.
+        if all_merkle_sum_tree.len() != self.entry_csvs.len() {
+            return Err("Mismatch in generated mini tree counts and given CSV counts".into());
+        }
 
         AggregationMerkleSumTree::new(
             all_merkle_sum_tree,
             vec![
                 Cryptocurrency {
-                    name: "BTC".to_string(),
-                    chain: "mainnet".to_string(),
-                },
-                Cryptocurrency {
-                    name: "ETH".to_string(),
-                    chain: "mainnet".to_string(),
-                },
+                    name: "DUMMY".to_string(),
+                    chain: "ETH".to_string(),
+                };
+                N_CURRENCIES
             ],
         )
     }
