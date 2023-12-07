@@ -1,6 +1,6 @@
 # Summa Aggregation
 
-Summa Aggregation is a scalable solution specifically designed to accelerate the process of building Merkle sum trees. It addresses the time-intensive challenge of constructing these trees by enabling efficient scaling through parallelization and distributed computation across multiple machines.
+Summa Aggregation is a scalable solution specifically designed to accelerate the process of building Merkle sum tree. It addresses the time-intensive challenge of constructing these trees by enabling efficient scaling through parallelization and distributed computation across multiple machines.
 
 ## Running test
 

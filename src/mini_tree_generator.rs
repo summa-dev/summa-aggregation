@@ -4,13 +4,8 @@ use const_env::from_env;
 use crate::json_mst::{JsonEntry, JsonMerkleSumTree};
 use summa_backend::merkle_sum_tree::{Cryptocurrency, Entry, MerkleSumTree};
 
-#[from_env]
-const N_CURRENCIES: usize = 2;
-#[from_env]
-const N_BYTES: usize = 14;
-
-/// Mini Tree Generator is designed to create Merkle Sum Trees using the Axum web framework. 
-/// It primarily handles HTTP requests to generate trees based on provided JSON entries.
+/// Mini Tree Generator is designed to create Merkle Sum Tree using the Axum web framework. 
+/// It primarily handles HTTP requests to generate tree based on provided JSON entries.
 ///
 /// Constants:
 /// - `N_CURRENCIES`: The number of cryptocurrencies involved. Set via environment variables.
@@ -21,6 +16,11 @@ const N_BYTES: usize = 14;
 ///   It converts `JsonEntry` objects into `Entry<N_CURRENCIES>` instances and then constructs the `MerkleSumTree`.
 ///   The function handles the conversion of the `MerkleSumTree` into a JSON format (`JsonMerkleSumTree`) for the response.
 ///
+#[from_env]
+const N_CURRENCIES: usize = 2;
+#[from_env]
+const N_BYTES: usize = 14;
+
 pub async fn create_mst(
     Json(json_entries): Json<Vec<JsonEntry>>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<JsonMerkleSumTree>)> {

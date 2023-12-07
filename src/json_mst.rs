@@ -136,7 +136,7 @@ impl JsonMerkleSumTree {
             N_CURRENCIES
         ];
 
-        MerkleSumTree::<N_CURRENCIES, N_BYTES>::new(
+        MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_params(
             root,
             nodes,
             self.depth,

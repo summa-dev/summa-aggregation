@@ -8,7 +8,7 @@ use summa_backend::merkle_sum_tree::{
 
 /// Aggregation Merkle Sum Tree Data Structure.
 ///
-/// Starting from a set of "mini" Merkle Sum Trees of equal depth, N_CURRENCIES and N_BYTES, the Aggregation Merkle Sum Tree inherits the properties of a Merkle Sum Tree and adds the following:
+/// Starting from a set of "mini" Merkle Sum Tree of equal depth, N_CURRENCIES and N_BYTES, the Aggregation Merkle Sum Tree inherits the properties of a Merkle Sum Tree and adds the following:
 /// * Each Leaf of the Aggregation Merkle Sum Tree is the root of a "mini" Merkle Sum Tree made of `hash` and `balances`
 ///
 /// # Type Parameters
@@ -127,8 +127,8 @@ impl<const N_CURRENCIES: usize, const N_BYTES: usize> Tree<N_CURRENCIES, N_BYTES
 impl<const N_CURRENCIES: usize, const N_BYTES: usize>
     AggregationMerkleSumTree<N_CURRENCIES, N_BYTES>
 {
-    /// Builds a AggregationMerkleSumTree from a set of mini MerkleSumTrees
-    /// The leaves of the AggregationMerkleSumTree are the roots of the mini MerkleSumTrees
+    /// Builds a AggregationMerkleSumTree from a set of mini MerkleSumTree
+    /// The leaves of the AggregationMerkleSumTree are the roots of the mini MerkleSumTree
     pub fn new(
         mini_trees: Vec<MerkleSumTree<N_CURRENCIES, N_BYTES>>,
         cryptocurrencies: Vec<Cryptocurrency>,
@@ -297,7 +297,7 @@ mod test {
 
     #[test]
     fn test_aggregation_mst_overflow() {
-        // create new mini merkle sum trees. The accumulated balance for each mini tree is in the expected range
+        // create new mini merkle sum tree. The accumulated balance for each mini tree is in the expected range
         // note that the accumulated balance of the tree generated from entry_16_4 is just in the expected range for 1 unit
         let merkle_sum_tree_1 =
             MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_csv("src/orchestrator/csv/entry_16.csv")
