@@ -17,9 +17,9 @@ use tokio::sync::oneshot;
 use crate::executor::{Executor, ExecutorSpawner};
 
 /// LocalSpawner
-/// 
-/// The LocalSpawner is tailored for use cases closer to actual deployment. It enables the initialization of Executors 
-/// and Workers within a local Docker environment. This spawner is ideal for development and testing phases, 
+///
+/// The LocalSpawner is to use cases closer to actual deployment. It enables the initialization of Executors
+/// and Workers within a local Docker environment. This spawner is ideal for development and testing phases,
 /// where simplicity and direct control over the containers are beneficial.
 pub struct LocalSpawner {
     docker: Docker,
@@ -66,8 +66,6 @@ impl LocalSpawner {
             platform: None,
         };
 
-        println!("docker-info: {:?}", docker.info().await?);
-
         docker
             .create_container(Some(create_container_options), config.clone())
             .await?;
@@ -81,8 +79,6 @@ impl LocalSpawner {
 
         let container_info: ContainerInspectResponse =
             docker.inspect_container(&container_name, None).await?;
-
-        println!("container_info: {:?}", container_info);
 
         Ok(container_info)
     }

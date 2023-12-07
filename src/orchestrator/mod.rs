@@ -37,7 +37,17 @@ impl<const N_CURRENCIES: usize, const N_BYTES: usize> Orchestrator<N_CURRENCIES,
     /// * `executor_index` - The index of the executor.
     /// * `total_executors` - The total number of executors.
     ///
+    /// Returns:
+    /// (start, end)
     /// A tuple representing the start and end indices of the tasks assigned to the executor
+    ///
+    /// The first value in the tuple, the `start` index, indicates the beginning of the task range for the executor,
+    /// while the second value, the `end` index, specifies the end of the range (exclusive).
+    ///
+    /// This calculation divides the total number of tasks by the number of executors to distribute tasks evenly.
+    /// For instance, if there are 5 tasks and 2 executors, the tasks will be split as follows:
+    /// Executor_1: [1, 2, 3] (start index 0, end index 3)
+    /// Executor_2: [4, 5]    (start index 3, end index 5)
     fn calculate_task_range(
         &self,
         executor_index: usize,

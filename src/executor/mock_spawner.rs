@@ -13,7 +13,7 @@ use crate::executor::{Executor, ExecutorSpawner};
 use crate::mini_tree_generator::create_mst;
 
 /// MockSpawner
-/// 
+///
 /// Primarily used for testing purposes, the MockSpawner initializes Executors suitable for various test scenarios,
 /// including negative test cases. It runs the `mini-tree-server` locally, allowing for a controlled testing environment.
 pub struct MockSpawner {

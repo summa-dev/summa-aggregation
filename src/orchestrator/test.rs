@@ -10,8 +10,8 @@ async fn test_single_mock_worker() {
     let orchestrator = Orchestrator::<2, 14>::new(
         Box::new(spawner),
         vec![
-            "./src/orchestrator/csv/entry_16_1.csv".to_string(),
-            "./src/orchestrator/csv/entry_16_2.csv".to_string(),
+            "csv/entry_16_1.csv".to_string(),
+            "csv/entry_16_2.csv".to_string(),
         ],
     );
     let aggregation_merkle_sum_tree = orchestrator.create_aggregation_mst(1).await.unwrap();
@@ -26,8 +26,8 @@ async fn test_none_exist_csv() {
     let orchestrator = Orchestrator::<2, 14>::new(
         Box::new(spawner),
         vec![
-            "./src/orchestrator/csv/entry_16.csv".to_string(),
-            "./src/orchestrator/csv/no_exist.csv".to_string(),
+            "csv/entry_16.csv".to_string(),
+            "csv/no_exist.csv".to_string(),
         ],
     );
     match orchestrator.create_aggregation_mst(2).await {
@@ -48,8 +48,8 @@ async fn test_none_exist_worker() {
     let orchestrator = Orchestrator::<2, 14>::new(
         Box::new(spawner),
         vec![
-            "./src/orchestrator/csv/entry_16_1.csv".to_string(),
-            "./src/orchestrator/csv/entry_16_2.csv".to_string(),
+            "csv/entry_16_1.csv".to_string(),
+            "csv/entry_16_2.csv".to_string(),
         ],
     );
 
@@ -63,7 +63,7 @@ async fn test_none_exist_worker() {
     }
 }
 
-#[cfg(feature = "docker")]
+// #[cfg(feature = "docker")]
 #[tokio::test]
 async fn test_with_containers() {
     let spawner = LocalSpawner::new(
@@ -74,8 +74,8 @@ async fn test_with_containers() {
     let orchestrator = Orchestrator::<2, 14>::new(
         Box::new(spawner),
         vec![
-            "./src/orchestrator/csv/entry_16_1.csv".to_string(),
-            "./src/orchestrator/csv/entry_16_2.csv".to_string(),
+            "csv/entry_16_1.csv".to_string(),
+            "csv/entry_16_2.csv".to_string(),
         ],
     );
     let aggregation_merkle_sum_tree = orchestrator.create_aggregation_mst(2).await.unwrap();
@@ -96,8 +96,8 @@ async fn test_with_swarm_service() {
     let orchestrator = Orchestrator::<2, 14>::new(
         Box::new(spawner),
         vec![
-            "./src/orchestrator/csv/entry_16_1.csv".to_string(),
-            "./src/orchestrator/csv/entry_16_2.csv".to_string(),
+            "csv/entry_16_1.csv".to_string(),
+            "csv/entry_16_2.csv".to_string(),
         ],
     );
     let aggregation_merkle_sum_tree = orchestrator.create_aggregation_mst(2).await.unwrap();

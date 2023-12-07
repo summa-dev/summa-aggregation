@@ -20,16 +20,16 @@ pub struct CloudSpawner {
 }
 
 /// CloudSpawner
-/// 
-/// Designed for cloud-based resources and Docker Swarm, CloudSpawner is optimized for scalability and high availability. 
+///
+/// Designed for cloud-based resources and Docker Swarm, CloudSpawner is optimized for scalability and high availability.
 /// While functioning similarly to LocalSpawner, it extends its capabilities by initializing workers on remote machines, making it particularly suitable for Swarm network setups.
-/// 
+///
 /// CloudSpawner can be utilized in two ways:
-/// 
-/// - Without `service_info`, CloudSpawner does not directly manage Worker instances. 
+///
+/// - Without `service_info`, CloudSpawner does not directly manage Worker instances.
 ///   In this mode, it does not control or interact with the Docker API for worker management.
-/// 
-/// - With `service_info`, CloudSpawner requires a `docker-compose` file. When provided with `service_info`, 
+///
+/// - With `service_info`, CloudSpawner requires a `docker-compose` file. When provided with `service_info`,
 ///   it manages Docker services and networks, enabling dynamic scaling and orchestration of workers.
 impl CloudSpawner {
     pub fn new(

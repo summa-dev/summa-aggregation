@@ -24,6 +24,8 @@ Second, send two entries to the Mini Tree Server, execute the following script:
   bash ./scripts/test_sending_entry.sh
   ```
 
+Note: Execute this command from the project's root folder to ensure proper functioning of scripts.
+
 Upon successful execution, you will receive a response similar to the following:
 <details>
 <summary>Click View Response</summary>

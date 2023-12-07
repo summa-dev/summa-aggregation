@@ -4,7 +4,7 @@ use const_env::from_env;
 use crate::json_mst::{JsonEntry, JsonMerkleSumTree};
 use summa_backend::merkle_sum_tree::{Cryptocurrency, Entry, MerkleSumTree};
 
-/// Mini Tree Generator is designed to create Merkle Sum Tree using the Axum web framework. 
+/// Mini Tree Generator is designed to create Merkle Sum Tree using the Axum web framework.
 /// It primarily handles HTTP requests to generate tree based on provided JSON entries.
 ///
 /// Constants:

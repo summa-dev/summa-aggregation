@@ -1,7 +1,6 @@
 use halo2_proofs::halo2curves::bn256::Fr as Fp;
-use num_bigint::BigUint;
 use std::error::Error;
-use summa_backend::merkle_sum_tree::utils::{build_merkle_tree_from_leaves, fp_to_big_uint};
+use summa_backend::merkle_sum_tree::utils::build_merkle_tree_from_leaves;
 use summa_backend::merkle_sum_tree::{
     Cryptocurrency, Entry, MerkleProof, MerkleSumTree, Node, Tree,
 };
@@ -162,19 +161,6 @@ impl<const N_CURRENCIES: usize, const N_BYTES: usize>
             }
         }
 
-        // Iterate through the balance accumulator and throw error if any balance is not in range 0, 2 ^ (8 * N_BYTES):
-        for balance in &balances_acc {
-            // transform the balance to a BigUint
-            let balance_big_uint = fp_to_big_uint(*balance);
-
-            if balance_big_uint >= BigUint::from(2_usize).pow(8 * N_BYTES as u32) {
-                return Err(
-                    "Accumulated balance is not in the expected range, proof generation will fail!"
-                        .into(),
-                );
-            }
-        }
-
         let mut nodes = vec![];
         let root = build_merkle_tree_from_leaves(&roots, depth, &mut nodes)?;
 
@@ -218,12 +204,10 @@ mod test {
     fn test_aggregation_mst() {
         // create new mini merkle sum tree
         let mini_tree_1 =
-            MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_csv("src/orchestrator/csv/entry_16_1.csv")
-                .unwrap();
+            MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_csv("csv/entry_16_1.csv").unwrap();
 
         let mini_tree_2 =
-            MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_csv("src/orchestrator/csv/entry_16_2.csv")
-                .unwrap();
+            MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_csv("csv/entry_16_2.csv").unwrap();
 
         let aggregation_mst = AggregationMerkleSumTree::<N_CURRENCIES, N_BYTES>::new(
             vec![mini_tree_1.clone(), mini_tree_2.clone()],
@@ -271,7 +255,7 @@ mod test {
         let mut mini_trees = Vec::new();
         for i in 1..=4 {
             let mini_tree = MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_csv(&format!(
-                "src/orchestrator/csv/entry_16_{}.csv",
+                "csv/entry_16_{}.csv",
                 i
             ))
             .unwrap();
@@ -286,8 +270,7 @@ mod test {
 
         // The entry_64.csv file is the aggregation of entry_16_1, entry_16_2, entry_16_3, entry_16_4
         let single_merkle_sum_tree =
-            MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_csv("src/orchestrator/csv/entry_64.csv")
-                .unwrap();
+            MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_csv("csv/entry_64.csv").unwrap();
 
         assert_eq!(
             aggregation_mst_root.hash,
@@ -300,13 +283,11 @@ mod test {
         // create new mini merkle sum tree. The accumulated balance for each mini tree is in the expected range
         // note that the accumulated balance of the tree generated from entry_16_4 is just in the expected range for 1 unit
         let merkle_sum_tree_1 =
-            MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_csv("src/orchestrator/csv/entry_16.csv")
-                .unwrap();
+            MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_csv("csv/entry_16.csv").unwrap();
 
-        let merkle_sum_tree_2 = MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_csv(
-            "src/orchestrator/csv/entry_16_no_overflow.csv",
-        )
-        .unwrap();
+        let merkle_sum_tree_2 =
+            MerkleSumTree::<N_CURRENCIES, N_BYTES>::from_csv("csv/entry_16_no_overflow.csv")
+                .unwrap();
 
         // When creating the aggregation merkle sum tree, the accumulated balance of the two mini trees is not in the expected range, an error is thrown
         let result = AggregationMerkleSumTree::<N_CURRENCIES, N_BYTES>::new(

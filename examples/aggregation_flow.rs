@@ -73,8 +73,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let orchestrator = Orchestrator::<N_CURRENCIES, N_BYTES>::new(
         Box::new(spawner),
         vec![
-            "./src/orchestrator/csv/entry_16_1.csv".to_string(),
-            "./src/orchestrator/csv/entry_16_2.csv".to_string(),
+            "csv/entry_16_1.csv".to_string(),
+            "csv/entry_16_2.csv".to_string(),
         ],
     );
 
@@ -99,7 +99,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     //
     // Here, we demonstrate generating the proof of inclusion for User 0.
     let inclusion_proof_of_user0 = round.get_proof_of_inclusion(0).unwrap();
-    assert!(inclusion_proof_of_user0.get_public_inputs().len() > 0); // Check public input counts
+    assert!(!inclusion_proof_of_user0.get_public_inputs().is_empty()); // Check public input counts
 
     println!("Generated User 0 proof of inclusion");
     Ok(())

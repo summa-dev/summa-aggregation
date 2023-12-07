@@ -6,18 +6,27 @@ use halo2_proofs::halo2curves::{bn256::Fr as Fp, group::ff::PrimeField};
 
 use summa_backend::merkle_sum_tree::{Cryptocurrency, Entry, MerkleSumTree, Node, Tree};
 
+/// JsonNode
+/// Represents a entry in the Merkle Sum Tree in JSON format.
+/// The balance in the Merkle Sum Tree was presented BigUint format, but in the JSON format, it is presented as a string.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JsonEntry {
     pub username: String,
     pub balances: Vec<String>,
 }
 
+/// JsonNode
+/// Represents a node in the Merkle Sum Tree in JSON format.
+/// The balance in the Merkle Sum Tree was presented BigUint format, but in the JSON format, it is presented as a string.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JsonNode {
     pub hash: String,
     pub balances: Vec<String>,
 }
 
+/// JsonMerkleSumTree
+/// Represents the entire Merkle Sum Tree in JSON format.
+/// It is used for transmitting tree data between the executor and mini-tree-server.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JsonMerkleSumTree {
     pub root: JsonNode,
@@ -44,6 +53,10 @@ impl JsonEntry {
         JsonEntry { username, balances }
     }
 
+    /// Converts an `Entry` to a `JsonEntry`.
+    ///
+    /// This method translates an `Entry` into its JSON format.
+    /// It is used by the Executor to send Entry data to the mini-tree-server in JSON format.
     pub fn from_entry<const N_CURRENCIES: usize>(entry: &Entry<N_CURRENCIES>) -> Self {
         JsonEntry::new(
             entry.username().to_string(),
@@ -55,6 +68,10 @@ impl JsonEntry {
         )
     }
 
+    /// Converts a `JsonEntry` back to an `Entry`.
+    ///
+    /// This method is utilized by the mini-tree-server when processing data received from the executor in JSON format.
+    /// It converts `JsonEntry` objects back to the `Entry` struct, facilitating the construction of the Merkle Sum Tree.
     pub fn to_entry<const N_CURRENCIES: usize>(&self) -> Entry<N_CURRENCIES> {
         let mut balances: [BigUint; N_CURRENCIES] = std::array::from_fn(|_| BigUint::from(0u32));
         self.balances.iter().enumerate().for_each(|(i, balance)| {
@@ -65,6 +82,7 @@ impl JsonEntry {
     }
 }
 
+/// Converts a `JsonNode` back to a `Node` for reconstructing the Merkle Sum Tree from JSON data.
 impl JsonNode {
     pub fn to_node<const N_CURRENCIES: usize>(&self) -> Node<N_CURRENCIES> {
         let hash = parse_fp_from_hex(&self.hash);
@@ -81,6 +99,10 @@ impl JsonNode {
 }
 
 impl JsonMerkleSumTree {
+    /// Converts a MerkleSumTree to its JSON representation.
+    ///
+    /// This function is essential for the mini-tree-server to send the Merkle Sum Tree results back to the executor in JSON format,
+    /// facilitating the translation of the tree structure into a universally readable JSON form.
     pub fn from_tree<const N_CURRENCIES: usize, const N_BYTES: usize>(
         tree: MerkleSumTree<N_CURRENCIES, N_BYTES>,
     ) -> Self {
@@ -110,6 +132,11 @@ impl JsonMerkleSumTree {
         }
     }
 
+    /// Converts a JsonMerkleSumTree back to a MerkleSumTree.
+    ///
+    /// This function is crucial when handling data received in JSON format from the mini-tree-server.
+    /// It rebuilds the MerkleSumTree on the main machine using the `from_params` method.
+    /// This method is preferred over `from_entries` as the nodes are pre-computed by the mini-tree-server, thus the tree doesn't need to be recomputed from scratch.
     pub fn to_mst<const N_CURRENCIES: usize, const N_BYTES: usize>(
         &self,
     ) -> Result<MerkleSumTree<N_CURRENCIES, N_BYTES>, Box<dyn Error>>

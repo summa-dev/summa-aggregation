@@ -35,8 +35,7 @@ async fn test_executor() -> Result<(), Box<dyn Error>> {
     let spawner = MockSpawner::new(None);
     let executor = spawner.spawn_executor().await;
 
-    let (_, entries) =
-        parse_csv_to_entries::<_, 2, 14>("./src/orchestrator/csv/entry_16.csv").unwrap();
+    let (_, entries) = parse_csv_to_entries::<_, 2, 14>("csv/entry_16.csv").unwrap();
     let json_entries = entries
         .iter()
         .map(JsonEntry::from_entry)
@@ -55,10 +54,8 @@ async fn test_executor_block() -> Result<(), Box<dyn Error>> {
     let executor = spawner.spawn_executor().await;
 
     // Parse two csv files
-    let (_, entries_1) =
-        parse_csv_to_entries::<_, 2, 14>("./src/orchestrator/csv/entry_16.csv").unwrap();
-    let (_, entries_2) =
-        parse_csv_to_entries::<_, 2, 14>("./src/orchestrator/csv/entry_16.csv").unwrap();
+    let (_, entries_1) = parse_csv_to_entries::<_, 2, 14>("csv/entry_16.csv").unwrap();
+    let (_, entries_2) = parse_csv_to_entries::<_, 2, 14>("csv/entry_16.csv").unwrap();
 
     // Convert entries to json_entries
     let json_entries_1 = entries_1
