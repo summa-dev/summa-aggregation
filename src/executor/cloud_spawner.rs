@@ -19,12 +19,18 @@ pub struct CloudSpawner {
     default_port: i64,
 }
 
-/// `CloudSpawner` is responsible for managing the lifecycle of workers in a cloud environment.
-///
-/// - Without `service_info`, `CloudSpawner` does not manage `Worker` instances directly.
-///   This means it does not control or interact with Docker API for worker management.
-/// - With `service_info`, `CloudSpawner` requires a `docker-compose` file. The `CloudSpawner` will
-///   use the provided `service_info` to manage Docker services and networks, allowing dynamic scaling and orchestration of workers.
+/// CloudSpawner
+/// 
+/// Designed for cloud-based resources and Docker Swarm, CloudSpawner is optimized for scalability and high availability. 
+/// While functioning similarly to LocalSpawner, it extends its capabilities by initializing workers on remote machines, making it particularly suitable for Swarm network setups.
+/// 
+/// CloudSpawner can be utilized in two ways:
+/// 
+/// - Without `service_info`, CloudSpawner does not directly manage Worker instances. 
+///   In this mode, it does not control or interact with the Docker API for worker management.
+/// 
+/// - With `service_info`, CloudSpawner requires a `docker-compose` file. When provided with `service_info`, 
+///   it manages Docker services and networks, enabling dynamic scaling and orchestration of workers.
 impl CloudSpawner {
     pub fn new(
         service_info: Option<(String, String)>, // If the user want to use docker-compose.yml for docker swarm

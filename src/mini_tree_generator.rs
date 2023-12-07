@@ -9,6 +9,18 @@ const N_CURRENCIES: usize = 2;
 #[from_env]
 const N_BYTES: usize = 14;
 
+/// Mini Tree Generator is designed to create Merkle Sum Trees using the Axum web framework. 
+/// It primarily handles HTTP requests to generate trees based on provided JSON entries.
+///
+/// Constants:
+/// - `N_CURRENCIES`: The number of cryptocurrencies involved. Set via environment variables.
+/// - `N_BYTES`: The byte size for each entry. Set via environment variables.
+///
+/// Functions:
+/// - `create_mst`: An asynchronous function that processes incoming JSON requests to generate a Merkle Sum Tree.
+///   It converts `JsonEntry` objects into `Entry<N_CURRENCIES>` instances and then constructs the `MerkleSumTree`.
+///   The function handles the conversion of the `MerkleSumTree` into a JSON format (`JsonMerkleSumTree`) for the response.
+///
 pub async fn create_mst(
     Json(json_entries): Json<Vec<JsonEntry>>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<JsonMerkleSumTree>)> {
