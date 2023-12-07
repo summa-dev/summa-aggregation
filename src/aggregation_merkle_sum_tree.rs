@@ -35,7 +35,7 @@ impl<const N_CURRENCIES: usize, const N_BYTES: usize> Tree<N_CURRENCIES, N_BYTES
     }
 
     fn leaves(&self) -> &[Node<N_CURRENCIES>] {
-        &self.nodes[0]
+        &[]
     }
 
     fn nodes(&self) -> &[Vec<Node<N_CURRENCIES>>] {
@@ -47,7 +47,7 @@ impl<const N_CURRENCIES: usize, const N_BYTES: usize> Tree<N_CURRENCIES, N_BYTES
     }
 
     fn entries(&self) -> &[Entry<N_CURRENCIES>] {
-        self.mini_trees[0].entries()
+        &[]
     }
 
     fn get_entry(&self, user_index: usize) -> &Entry<N_CURRENCIES> {
