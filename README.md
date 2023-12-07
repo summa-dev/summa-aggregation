@@ -43,7 +43,7 @@ Key aspects of the Executor's role include:
 
 ## ExecutorSpawner
 
-The `ExecutorSpawner` is responsible for initializing and terminating Executors. It can serve as the management point for creating `Executor` instances and Workers. The latter function as the `mini-tree-server`.
+The `ExecutorSpawner` is responsible for initializing and terminating Executors. It can serve as the management point for creating `Executor` instances.
 
 In the Summa-Aggregation, there are three types of `ExecutorSpawner` provided:
 

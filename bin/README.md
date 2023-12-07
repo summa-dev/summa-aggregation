@@ -1,24 +1,30 @@
 # Mini Tree Server
 
-Mini tree server is wrapped 
+Mini Tree Server is an Axum-based server that encapsulates the functionality of the Mini Tree Generator.
 
-### Test Mini Tree Server
+## Test Mini Tree Server
 
-You can manually test the `Mini Tree Server` with running container.
+First, to start the Mini Tree Server, use the command:
 
-First, Use the command below to start the Mini Tree Server container:
+```bash
+  cargo run --release --bin mini-tree-server
+```
+
+Alternatively, if you have the summa-aggregation-mini-tree image locally, can run the server with this command:
 
   ```bash
-  docker run -d -p 4000:4000 --name mini-tree-server summa-aggretaion/mini-tree
+  docker run -d -p 4000:4000 --name mini-tree-server-test summadev/summa-aggregation-mini-tree
   ```
 
-Second, to send two entries to the `Mini Tree Server`, use this script:
+For details on obtaining the summadev/summa-aggregation-mini-tree image, please refer to the [Building Image](../README.md#building-the-docker-image) and [Downloading Image](../README.md#downloading-the-docker-image) sections in the README.
+
+Second, send two entries to the Mini Tree Server, execute the following script:
 
   ```bash
   bash ./scripts/test_sending_entry.sh
   ```
 
-Upon successful execution, you will receive a response similar to the following
+Upon successful execution, you will receive a response similar to the following:
 <details>
 <summary>Click View Response</summary>
 
@@ -66,3 +72,4 @@ Upon successful execution, you will receive a response similar to the following
 this JSON output is prettified for clarity
 
 </details>
+
