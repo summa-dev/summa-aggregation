@@ -15,8 +15,7 @@ Please ensure that this port is not already in use to avoid errors.
 
 ## Running Additional Tests Involving Docker and Docker Swarm
 
-For additional tests involving Docker and Docker Swarm mode, the presence of the "summadev/summa-aggregation-mini-tree" image in the local Docker registry is required.
-
+For additional tests involving Docker and Docker Swarm mode, the presence of the "summadev/summa-aggregation-mini-tree" image in the local Docker registry is required. Please refer to the [Mini Tree Server](bin/README.md) for more information about the mini tree.
 
 ### Building the docker image
 
@@ -37,7 +36,6 @@ docker pull summadev/summa-aggregation-mini-tree
 ### Testing with LocalSpawner
 
 The following command runs an additional test case using the LocalSpawner, which spawns worker containers in the local Docker environment. This extra test case involves running two containers during the testing process:
-
 
 ```bash
 cargo test --features docker

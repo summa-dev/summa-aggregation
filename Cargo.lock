@@ -4096,7 +4096,7 @@ dependencies = [
 [[package]]
 name = "summa-backend"
 version = "0.1.0"
-source = "git+https://github.com/summa-dev/summa-solvency?branch=v1-improvements-and-consolidation#8be1acce551c94a87c851f84c4b0a7d14595e01b"
+source = "git+https://github.com/summa-dev/summa-solvency?branch=v1-improvements-and-consolidation#89c228dee2c41b9592016789717446c71ff06bec"
 dependencies = [
  "base64 0.13.1",
  "bincode",
@@ -4117,7 +4117,7 @@ dependencies = [
 [[package]]
 name = "summa-solvency"
 version = "0.1.0"
-source = "git+https://github.com/summa-dev/summa-solvency?branch=v1-improvements-and-consolidation#8be1acce551c94a87c851f84c4b0a7d14595e01b"
+source = "git+https://github.com/summa-dev/summa-solvency?branch=v1-improvements-and-consolidation#89c228dee2c41b9592016789717446c71ff06bec"
 dependencies = [
  "ark-std",
  "csv",

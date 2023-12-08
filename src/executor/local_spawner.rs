@@ -187,7 +187,7 @@ impl ExecutorSpawner for LocalSpawner {
     }
 }
 
-// #[cfg(feature = "docker")]
+#[cfg(feature = "docker")]
 #[cfg(test)]
 mod tests {
     use super::*;

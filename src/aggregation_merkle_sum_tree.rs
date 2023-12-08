@@ -34,20 +34,12 @@ impl<const N_CURRENCIES: usize, const N_BYTES: usize> Tree<N_CURRENCIES, N_BYTES
         &self.depth
     }
 
-    fn leaves(&self) -> &[Node<N_CURRENCIES>] {
-        &[]
-    }
-
     fn nodes(&self) -> &[Vec<Node<N_CURRENCIES>>] {
         &self.nodes
     }
 
     fn cryptocurrencies(&self) -> &[Cryptocurrency] {
         &self.cryptocurrencies
-    }
-
-    fn entries(&self) -> &[Entry<N_CURRENCIES>] {
-        &[]
     }
 
     fn get_entry(&self, user_index: usize) -> &Entry<N_CURRENCIES> {
