@@ -1,89 +1,90 @@
 # Summa Aggregation
 
-## Orchestrator
+Summa Aggregation is a scalable solution specifically designed to accelerate the process of building Merkle sum tree. It addresses the time-intensive challenge of constructing these trees by enabling efficient scaling through parallelization and distributed computation across multiple machines.
 
-WIP
+## Running test
 
-## Mini Tree Generator
+Tests can be run using the following command:
 
-- Build the Image
-  
-  To build the image, run the following command:
-  ```
-  docker build . -t summa-aggregation/mini-tree
-  ```
+```bash
+cargo test --release
+```
 
-- Run the `Mini Tree Generator Container`
+Note: The Worker will run locally and uses port 4000 as the default for its server.
+Please ensure that this port is not already in use to avoid errors.
 
-  Use the command below to start the Mini Tree Generator container:
+## Running Additional Tests Involving Docker and Docker Swarm
 
-  ```
-  docker run -d -p 4000:4000 --name mini-tree-generator summa-aggretaion/mini-tree
-  ```
+For additional tests involving Docker and Docker Swarm mode, the presence of the "summadev/summa-aggregation-mini-tree" image in the local Docker registry is required. Please refer to the [Mini Tree Server](bin/README.md) for more information about the mini tree.
 
-- Test with a Script
+### Building the docker image
 
-  To test, execute the provided script that send two `Entry` data to server:
-  ```
-  bash ./scripts/test_sending_entry.sh
-  ```
+Build the image using the following command:
 
-  Upon successful execution, you will receive a response similar to the following 
-  (JSON output is prettified for clarity):
-  ```Json
-  {
-    "root": {
-      "hash": "0x2a4a7ae82b45b3800bdcd6364409e7ba9cac3d4598c546bd48952c234b5d2fb9",
-      "balances": [
-        "0x000000000000000000000000000000000000000000000000000000000001375f",
-        "0x000000000000000000000000000000000000000000000000000000000000e9a6"
-      ]
-    },
-    "nodes": [
-      [
-        {
-          "hash": "0x0e113acd03b98f0bab0ef6f577245d5d008cbcc19ef2dab3608aa4f37f72a407",
-          "balances": [
-            "0x0000000000000000000000000000000000000000000000000000000000002e70",
-            "0x000000000000000000000000000000000000000000000000000000000000a0cb"
-          ]
-        },
-        {
-          "hash": "0x17ef9d8ee0e2c8470814651413b71009a607a020214f749687384a7b7a7eb67a",
-          "balances": [
-            "0x00000000000000000000000000000000000000000000000000000000000108ef",
-            "0x00000000000000000000000000000000000000000000000000000000000048db"
-          ]
-        }
-      ],
-      [
-        {
-          "hash": "0x2a4a7ae82b45b3800bdcd6364409e7ba9cac3d4598c546bd48952c234b5d2fb9",
-          "balances": [
-            "0x000000000000000000000000000000000000000000000000000000000001375f",
-            "0x000000000000000000000000000000000000000000000000000000000000e9a6"
-          ]
-        }
-      ]
-    ],
-    "depth": 1,
-    "entries": [
-      {
-        "balances": [
-          "11888",
-          "41163"
-        ],
-        "username": "dxGaEAii"
-      },
-      {
-        "balances": [
-          "67823",
-          "18651"
-        ],
-        "username": "MBlfbBGI"
-      }
-    ],
-    "is_sorted": false
-  }
-  ```
+```bash
+docker build . -t summadev/summa-aggregation-mini-tree
+```
 
+### Downloading the Docker Image
+
+Alternatively, the image can be downloaded from Docker Hub:
+
+```bash
+docker pull summadev/summa-aggregation-mini-tree
+```
+
+### Testing with LocalSpawner
+
+The following command runs an additional test case using the LocalSpawner, which spawns worker containers in the local Docker environment. This extra test case involves running two containers during the testing process:
+
+```bash
+cargo test --features docker
+```
+
+### Testing with CloudSpawner
+
+For Summa-Aggregation, it's necessary to prepare a distributed environment where Workers can operate on remote machines, referred to as 'Nodes'. For guidance on setting up swarm nodes, please see [Getting Started with swarm mode](https://docs.docker.com/engine/swarm/swarm-tutorial)
+
+When the Docker environment is running successfully in Swarm mode, an additional test case that spawns workers on Swarm nodes using the `CloudSpawner` can be run:
+
+```bash
+cargo test --features docker-swarm
+```
+
+It is critical to ensure that the Docker Swarm includes at least one node connected to the manager node. Additionally, each worker node in the swarm must have the "summadev/summa-aggregation-mini-tree" image in its Docker registry. Without this image on nodes connected to the manager node, spawning workers on that node is not possible.
+
+## Summa Aggregation Example
+
+This example demonstrates the setup and operation of a distributed environment using Summa Aggregation, including the initialization of round and generating inclusion proof. A notable aspect of this demonstration is how the AggregationMerkleSumTree can produce the generation of inclusion proofs, similarly to the MerkleSumTree.
+
+### 1. Setup Distributed Environment
+
+Custodians can leverage any cloud infrastructure to establish worker nodes. In this example, we use two local servers running mini-tree services as workers, rather than deploying worker containers on remote nodes.
+
+Key steps:
+
+- **Spawning Worker Nodes**: Two local servers are spawned, each running a mini-tree service.
+
+- **Worker URLs**: It is crucial to ensure the number of worker URLs matches the number of executors. In this example, we use `127.0.0.1:4000` and `127.0.0.1:4001`.
+
+### 2. Initialize the Round with Aggregation Merkle Sum Tree
+
+Initiating the round with an `AggregationMerkleSumTree` is a key step after setting up the distributed environment with worker nodes. This process involves the `Orchestrator` and the `Round`.
+
+- **Orchestrator and AggregationMerkleSumTree**: The `Orchestrator` is initialized with the `CloudSpawner` and paths to the CSV files containing entry data. It uses this information to generate the `AggregationMerkleSumTree`, which forms the basis for the round's operations.
+
+- **Round Initialization**: Subsequently, the `Round` is initialized using the aggregation merkle sum tree. The `Round` is integral for interactions with the Summa contract and relies on the setup performed by the `Orchestrator`.
+
+### 3. Interact with the Summa Contract and Generate Proof of Inclusion
+
+The actual example only shows the creation of an inclusion proof.
+
+For detailed information on interaction patterns similar to those in the `summa-backend` example, refer to the ['summa_solvency_flow'](https://github.com/summa-dev/summa-solvency/blob/master/backend/examples/summa_solvency_flow.rs).
+
+### Example Execution
+
+Run the example using the following command:
+
+```bash
+cargo run --release --example aggregation_flow
+```

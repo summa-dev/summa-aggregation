@@ -1,0 +1,23 @@
+name: Aggregation Test
+
+on:
+  push:
+    branches: ["*"]
+  pull_request:
+    branches: ["*"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Pull mini-tree image
+      run: docker pull summadev/summa-aggregation-mini-tree:latest
+    
+    - name: Run tests
+      run: cargo test --features docker

@@ -10,10 +10,35 @@ else
 fi
 
 # The curl command with the variable PORT
-curl -X POST http://localhost:$PORT/ \
+curl -X POST http://localhost:$PORT \
+     -vvv \
      -H "Content-Type: application/json" \
      -d '[
             {
+                "balances": ["11888", "41163"],
+                "username": "dxGaEAii"
+            },
+            {
+                "balances": ["67823", "18651"],
+                "username": "MBlfbBGI"
+            },
+             {
+                "balances": ["11888", "41163"],
+                "username": "dxGaEAii"
+            },
+            {
+                "balances": ["67823", "18651"],
+                "username": "MBlfbBGI"
+            },
+            {
+                "balances": ["11888", "41163"],
+                "username": "dxGaEAii"
+            },
+            {
+                "balances": ["67823", "18651"],
+                "username": "MBlfbBGI"
+            },
+             {
                 "balances": ["11888", "41163"],
                 "username": "dxGaEAii"
             },

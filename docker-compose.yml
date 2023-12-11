@@ -1,0 +1,20 @@
+version: '3.8'
+
+# CloudSpawner only reads from the first element of lists
+services:
+  mini_tree:
+    image: summadev/summa-aggregation-mini-tree:latest
+    ports: 
+      - published: 4000
+        target: 4000
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.role == worker
+    networks:
+      - mini_tree
+
+networks:
+  mini_tree:
+    driver: overlay
