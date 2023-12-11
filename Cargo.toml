@@ -26,6 +26,10 @@ serde_yaml = "0.9.27"
 name = "mini-tree-server"
 path = "bin/mini_tree_server.rs"
 
+[[bin]]
+name = "orchestrator-bench"
+path = "benches/build_mst_with_workers.rs"
+
 [features]
 docker = []
 docker-swarm = []
