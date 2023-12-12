@@ -27,8 +27,8 @@ name = "mini-tree-server"
 path = "bin/mini_tree_server.rs"
 
 [[bin]]
-name = "orchestrator-bench"
-path = "benches/build_mst_with_workers.rs"
+name = "aggregation-bench"
+path = "benches/build_aggregation_mst.rs"
 
 [features]
 docker = []
