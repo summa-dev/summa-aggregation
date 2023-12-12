@@ -1,6 +1,7 @@
 mod test;
 
 use futures::future::join_all;
+use rayon::prelude::*;
 use std::{cmp::min, error::Error};
 use summa_backend::merkle_sum_tree::{utils::parse_csv_to_entries, Cryptocurrency, MerkleSumTree};
 use tokio::sync::mpsc;
@@ -223,21 +224,18 @@ impl<const N_CURRENCIES: usize, const N_BYTES: usize> Orchestrator<N_CURRENCIES,
 
         let all_tree_results = join_all(all_tree_responses).await;
 
-        // Aggregate results from all workers in order
-        let mut ordered_tree_results = vec![None; self.entry_csvs.len()];
-        for result in all_tree_results {
-            let (index, worker_results) = result.unwrap();
-            let start = index * entries_per_executor;
-            for (i, res) in worker_results.iter().enumerate() {
-                ordered_tree_results[start + i] = Some(res.clone());
-            }
-        }
-
         // Terminate executors
         self.executor_spawner.terminate_executors().await;
 
-        let all_merkle_sum_tree: Vec<MerkleSumTree<N_CURRENCIES, N_BYTES>> =
-            ordered_tree_results.into_iter().flatten().collect();
+        // TODO: this merkle sum tree is not ordered, so we need to sort it
+        let all_merkle_sum_tree = all_tree_results
+            .into_par_iter()
+            .map(|result| {
+                let (_, worker_results) = result.unwrap();
+                worker_results
+            })
+            .flatten()
+            .collect::<Vec<MerkleSumTree<N_CURRENCIES, N_BYTES>>>();
 
         // Occur error if the number of mini_tree in 'all_merkle_sum_tree' is not equal to the number of entry_csvs.
         if all_merkle_sum_tree.len() != self.entry_csvs.len() {

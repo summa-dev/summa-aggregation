@@ -21,6 +21,7 @@ futures = "0.3.29"
 bollard = "0.15.0"
 tokio-util = "0.7.10"
 serde_yaml = "0.9.27"
+rayon = "1.8.0"
  
 [[bin]]
 name = "mini-tree-server"

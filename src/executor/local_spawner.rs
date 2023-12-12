@@ -10,9 +10,10 @@ use std::{
     env,
     error::Error,
     future::Future,
-    net::{SocketAddr, TcpListener, IpAddr},
+    net::{IpAddr, SocketAddr, TcpListener},
     pin::Pin,
-    sync::atomic::{AtomicUsize, Ordering}, str::FromStr,
+    str::FromStr,
+    sync::atomic::{AtomicUsize, Ordering},
 };
 use tokio;
 use tokio::sync::oneshot;
@@ -87,7 +88,10 @@ impl LocalSpawner {
 
         let config = Config {
             image: Some(image_name),
-            exposed_ports: Some(HashMap::from([("4000/tcp".to_string(), HashMap::<(), ()>::new())])), // Expose the container port
+            exposed_ports: Some(HashMap::from([(
+                "4000/tcp".to_string(),
+                HashMap::<(), ()>::new(),
+            )])), // Expose the container port
             host_config: Some(HostConfig {
                 port_bindings: Some(port_bindings),
                 ..Default::default()
@@ -152,7 +156,7 @@ impl ExecutorSpawner for LocalSpawner {
 
         // Return a Future that resolves to Executor
         Box::pin(async move {
-            // the container_info also has exposed port as 'host_port` field but it looks ugly to use it 
+            // the container_info also has exposed port as 'host_port` field but it looks ugly to use it
             let (exposed_port, container_info) = rx.await.expect("Failed to receive worker URL");
             let worker_url = format!(
                 "http://127.0.0.1:{}", // This port is exposed to the host

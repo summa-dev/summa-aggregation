@@ -4084,6 +4084,7 @@ dependencies = [
  "halo2_proofs",
  "num-bigint 0.4.4",
  "rand 0.8.5",
+ "rayon",
  "reqwest",
  "serde",
  "serde_json",
